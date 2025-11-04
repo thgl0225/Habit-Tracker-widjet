@@ -252,18 +252,51 @@
             </div>
         </div>
     </div>
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    
     <script>
+        // =========================================================================
+        // 🔥 2. FIREBASE 설정 및 초기화 (맨 위에 위치해야 함) 🔥
+        // =========================================================================
+
+        // ⚠️ **필수:** 이 객체의 값들을 Firebase Console에서 복사한 실제 값으로 교체하세요.
+        const firebaseConfig = {
+  apiKey: "AIzaSyD2w...x45P", // <--- 이 실제 API 키를 사용해야 합니다.
+  authDomain: "habit-tracker-1234.firebaseapp.com",
+  databaseURL: "https://habit-tracker-1234-default-rtdb.firebaseio.com",
+  projectId: "habit-tracker-1234",
+  storageBucket: "habit-tracker-1234.appspot.com",
+  messagingSenderId: "1234567890",
+  appId: "1:1234567890:web:abcdef"
+};
+
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        let habitsRef; // 사용자 UID 설정 후 할당될 Realtime DB 참조
+        let historyRef; // 사용자 UID 설정 후 할당될 Realtime DB 참조
+        
+        // =========================================================================
+        // 3. 전역 변수 초기화 (Local Storage 사용 제거)
+        // =========================================================================
         const DEFAULT_HABITS = [];
-        let habits = JSON.parse(localStorage.getItem('habits'));
-        if (habits === null || habits === undefined) { 
-            habits = DEFAULT_HABITS; 
-            localStorage.setItem('habits', JSON.stringify(habits));
-        }
-        let nextId = habits.length > 0 ? Math.max(...habits.map(h => h.id)) + 1 : 1;
-        let history = JSON.parse(localStorage.getItem('habitHistory')) || {}; 
+        let habits = []; // Firebase 로드 대기
+        let nextId = 1; // ID 계산용
+        let history = {}; // Firebase 로드 대기
         let currentHabitId = null;
+        
         const TODAY_KEY = getTodayKey(); 
         const TODAY_DAY = new Date().getDay();
+
+        // ⚠️ 기존의 saveState() 함수는 삭제되었습니다.
+        
+        // =========================================================================
+        // 4. 헬퍼 함수 및 색상 로직 (기존 코드 유지 및 Local Storage 제거)
+        // =========================================================================
+        
         function getTodayKey() { 
             const now = new Date();
             return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`; 
@@ -275,10 +308,6 @@
             d.setDate(diff); 
             d.setHours(0, 0, 0, 0); 
             return d;
-        }
-        function saveState() { 
-            localStorage.setItem('habits', JSON.stringify(habits)); 
-            localStorage.setItem('habitHistory', JSON.stringify(history));
         }
 
         const hexToHsl = (H) => { 
@@ -345,14 +374,11 @@
             document.documentElement.style.setProperty('--very-light-color', veryLightColor); 
             document.documentElement.style.setProperty('--hover-color', hoverColor); 
             document.documentElement.style.setProperty('--separator-color', separatorColor); 
-            localStorage.setItem('accentColor', newColor); 
+            // ⚠️ Local Storage 제거: localStorage.setItem('accentColor', newColor); 
             updateColorIcon(newColor); 
             renderHabits();
         }
 
-        /* 3. **수정:** 자동 정렬(sortHabits) 기능 제거 */
-        /* function sortHabits(habits) { ... } */
-        
         function isHabitDueToday(habit) { 
             if (habit.frequency === 'daily') return true;
             if (habit.frequency === 'weekly_days') return habit.days && habit.days.includes(TODAY_DAY); 
@@ -386,11 +412,78 @@
             return '[주기 미설정]';
         }
         
+        // =========================================================================
+        // 🔥 5. FIREBASE 인증 및 동기화 로직 (새로 추가) 🔥
+        // =========================================================================
+
+        // 데이터 저장 함수 (Local Storage 대체)
+        function saveHabitsToFirebase() {
+            if (habitsRef) {
+                habitsRef.set(habits)
+                    .then(() => console.log("Habits saved to Firebase."))
+                    .catch(error => console.error("Habits save error:", error));
+            }
+        }
+
+        function saveHistoryToFirebase() {
+            if (historyRef) {
+                historyRef.set(history)
+                    .then(() => console.log("History saved to Firebase."))
+                    .catch(error => console.error("History save error:", error));
+            }
+        }
+        
+        // Realtime Database에서 데이터 변화를 감지하고 동기화하는 함수
+        function setupFirebaseListeners() {
+            // 1. 습관 목록(habits) 리스너 설정
+            habitsRef.on('value', (snapshot) => {
+                const data = snapshot.val();
+                habits = data ? data : DEFAULT_HABITS; 
+                nextId = habits.length > 0 ? Math.max(...habits.map(h => h.id)) + 1 : 1;
+                renderHabits(); // 데이터 변경 시 렌더링
+            }, (error) => {
+                console.error("Habits listener error:", error);
+            });
+
+            // 2. 기록 히스토리(history) 리스너 설정
+            historyRef.on('value', (snapshot) => {
+                const data = snapshot.val();
+                history = data ? data : {}; 
+                renderHabits(); // 기록 변경 시 렌더링
+            }, (error) => {
+                console.error("History listener error:", error);
+            });
+        }
+
+        // Firebase 익명 로그인 및 데이터 초기화 함수
+        function initFirebaseApp() {
+            firebase.auth().signInAnonymously()
+                .then((userCredential) => {
+                    const user = userCredential.user;
+                    const userId = user.uid;
+                    
+                    console.log("Firebase initialized for user:", userId);
+                    
+                    // 사용자 ID를 기반으로 데이터베이스 경로(Reference) 설정
+                    habitsRef = database.ref('users/' + userId + '/habits');
+                    historyRef = database.ref('users/' + userId + '/history');
+                    
+                    // 데이터 로드 리스너 설정 시작
+                    setupFirebaseListeners();
+                })
+                .catch((error) => {
+                    console.error("Firebase Auth Error:", error);
+                });
+        }
+
+        // =========================================================================
+        // 6. 주요 액션 함수 수정 (Local Storage 대신 Firebase 저장 함수 호출)
+        // =========================================================================
+        
         function renderHabits() { 
             const habitList = document.getElementById('habitList'); 
             habitList.innerHTML = '';
             
-            /* 3. **수정:** habits 배열에 저장된 순서 그대로 렌더링 */
             const habitsToRender = habits; 
             const todayChecks = history[TODAY_KEY] || {};
             
@@ -401,8 +494,8 @@
                 
                 const habitItem = document.createElement('div'); 
                 habitItem.className = `habit-item ${isNotDue ? 'not-due' : ''}`; 
-                habitItem.setAttribute('draggable', 'true'); /* 3. 드래그 가능 속성 추가 */
-                habitItem.setAttribute('data-id', habit.id); /* 3. 드래그 식별자 추가 */
+                habitItem.setAttribute('draggable', 'true');
+                habitItem.setAttribute('data-id', habit.id);
                 
                 habitItem.innerHTML = `
                     <div style="display: flex; align-items: center;">
@@ -422,7 +515,6 @@
                     <button class="delete-btn" onclick="event.stopPropagation(); confirmDelete(${habit.id})" title="삭제">x</button>
                 `; 
                 
-                /* 3. 드래그 앤 드롭 이벤트 리스너 추가 */
                 habitItem.addEventListener('dragstart', handleDragStart);
                 habitItem.addEventListener('dragover', handleDragOver);
                 habitItem.addEventListener('drop', handleDrop);
@@ -432,10 +524,9 @@
             });
             
             updateProgress(); 
-            saveState(); 
+            // ⚠️ saveState() 호출은 삭제되었습니다.
         }
 
-        /* 3. **추가:** 드래그 앤 드롭 핸들러 */
         let draggedHabitId = null;
 
         function handleDragStart(e) {
@@ -450,7 +541,6 @@
             e.dataTransfer.dropEffect = 'move';
             const target = e.currentTarget;
             if (target.classList.contains('habit-item') && parseInt(target.getAttribute('data-id')) !== draggedHabitId) {
-                // 기존의 drag-over 클래스를 제거하고 현재 대상에 추가
                 document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
                 target.classList.add('drag-over');
             }
@@ -469,7 +559,6 @@
             const target = e.currentTarget;
             const targetId = parseInt(target.getAttribute('data-id'));
             
-            // 모든 드래그 관련 클래스 제거
             document.querySelectorAll('.dragging, .drag-over').forEach(el => el.classList.remove('dragging', 'drag-over'));
             
             if (draggedHabitId === targetId) return;
@@ -478,12 +567,12 @@
             const targetIndex = habits.findIndex(h => h.id === targetId);
 
             if (sourceIndex > -1 && targetIndex > -1) {
-                // 배열에서 습관을 이동
                 const [movedHabit] = habits.splice(sourceIndex, 1);
                 habits.splice(targetIndex, 0, movedHabit);
                 
-                // 새로운 순서로 리렌더링
-                renderHabits();
+                // 💡 수정: Firebase에 저장 요청
+                saveHabitsToFirebase(); 
+                // renderHabits()는 리스너가 호출합니다.
             }
             draggedHabitId = null;
         }
@@ -495,8 +584,12 @@
             const isChecked = !(history[TODAY_KEY] && history[TODAY_KEY][id]); 
             history[TODAY_KEY] = history[TODAY_KEY] || {}; 
             history[TODAY_KEY][id] = isChecked; 
-            renderHabits(); 
+            
+            // 💡 수정: Firebase에 기록 저장 요청
+            saveHistoryToFirebase(); 
+            // renderHabits()는 리스너가 호출합니다.
         }
+
         function updateProgress() { 
             const dailyDueHabits = habits.filter(h => h.frequency === 'daily' || (h.frequency === 'weekly_days' && isHabitDueToday(h)));
             const totalDueItems = dailyDueHabits.length; 
@@ -617,7 +710,10 @@
                 habits.push(newHabit); 
             } 
             closeHabitFormModal(); 
-            renderHabits(); 
+            
+            // 💡 수정: Firebase에 습관 배열 저장 요청
+            saveHabitsToFirebase();
+            // renderHabits()는 리스너가 호출합니다.
         }
         function confirmDelete(id) { 
             openConfirmModal('정말로 이 습관을 삭제하시겠습니까? 기록도 삭제됩니다.', () => { 
@@ -627,7 +723,10 @@
                         delete history[date][id]; 
                     } 
                 } 
-                renderHabits(); 
+                // 💡 수정: Firebase에 습관과 기록 동시 저장 요청
+                saveHabitsToFirebase(); 
+                saveHistoryToFirebase();
+                // renderHabits()는 리스너가 호출합니다.
             });
         }
         let pendingAction = null;
@@ -648,10 +747,14 @@
             window.alert(message);
         }
         
+        // =========================================================================
+        // 7. window.onload 수정 (앱 시작 지점)
+        // =========================================================================
         window.onload = function() { 
             document.getElementById('todayDateHeader').textContent = `오늘: ${TODAY_KEY}`; 
             const colorPicker = document.querySelector('#colorPicker');
-            const savedColor = localStorage.getItem('accentColor') || colorPicker.value; 
+            // ⚠️ Local Storage 제거: 기본 색상 값만 사용
+            const savedColor = colorPicker.value; 
             colorPicker.value = savedColor; 
             changeAccentColor(savedColor); 
             colorPicker.addEventListener('input', (e) => { 
@@ -660,7 +763,8 @@
             colorPicker.addEventListener('change', (e) => { 
                 changeAccentColor(e.target.value); 
             }); 
-            renderHabits(); 
+            // 💡 수정: renderHabits() 대신 Firebase 인증 및 로드 시작
+            initFirebaseApp();
         };
     </script>
 </body>
