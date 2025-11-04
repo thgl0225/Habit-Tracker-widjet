@@ -5,20 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>습관 트래커</title>
     <style>
-        /* 변수 설정 - 강조 색상에 따라 동적으로 변경될 변수 정의 */
+        /* 변수 설정 */
         :root {
             --accent-color: #e91e63;
-            --light-accent-color: #ff80ab;
+            --light-accent-color: #ff80ab; 
             --very-light-color: #f8bbd0;
-            --hover-color: #fce4ec; /* 테마 색상 기반의 옅은 배경색 */
+            --hover-color: #fce4ec;
+            --separator-color: #f0f0f0; 
             --widget-background: rgba(255, 255, 255, 0.9);
             --text-color: #333;
         }
 
         /* 초기화 */
-        * {
-            margin: 0;
-            padding: 0;
+        * { 
+            margin: 0; 
+            padding: 0; 
             box-sizing: border-box;
         }
 
@@ -40,505 +41,167 @@
             padding: 15px;
             width: 100%;
             max-width: 280px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-            border: 1px solid var(--very-light-color);
+            box-shadow: none; 
+            /* 1. **수정:** 사각형 외곽선 제거 */
+            border: none;
             position: relative;
         }
 
         /* 습관 목록 상단 (오늘 날짜 표시) */
         .today-header {
-            font-size: 10px;
-            color: var(--light-accent-color);
+            font-size: 12px;
+            color: var(--accent-color);
             text-align: center;
             margin-bottom: 10px;
             font-weight: 600;
-            cursor: pointer;
+            cursor: default; 
             padding: 5px;
             border-radius: 6px;
-            transition: background 0.2s;
         }
-        .today-header:hover {
-            background: var(--hover-color);
-            color: var(--accent-color);
+        
+        /* 2. **수정:** 습관 목록 최소 높이 설정 (빈 상태에서 공간 유지) */
+        #habitList {
+            min-height: 80px; /* 약 3~4개의 습관이 들어갈 수 있는 높이 */
         }
-
+        
         /* 습관 항목 */
         .habit-item {
             display: flex;
             align-items: center;
             justify-content: space-between; 
-            padding: 4px 0;
+            padding: 4px 0; 
             background: transparent;
             border-radius: 8px;
-            margin-bottom: 4px;
-            transition: background 0.3s;
-            border-bottom: 1px solid var(--hover-color); 
+            margin-bottom: 0;
+            transition: all 0.3s ease;
+            
+            border-bottom: 1px solid var(--separator-color);
             
             padding-left: 8px; 
             padding-right: 8px; 
             margin-left: -8px; 
-            margin-right: -8px; 
+            margin-right: -8px;
+            
+            cursor: grab; /* 3. 드래그 가능함을 시각적으로 표시 */
         }
-        .habit-item:last-child {
-            border-bottom: none; 
+        .habit-item:active {
+             cursor: grabbing;
         }
-        .habit-item:hover {
+        
+        .habit-item:hover { 
             background: var(--hover-color);
         }
-        .habit-item.not-due {
-            opacity: 0.5;
+        .habit-item.not-due { 
+            opacity: 0.5; 
             pointer-events: none;
+        }
+
+        /* 3. **추가:** 드래그 앤 드롭 CSS */
+        .habit-item.dragging {
+            opacity: 0.5;
+            transform: scale(0.98);
+            border: 2px dashed var(--accent-color);
+            padding: 2px 8px; 
+            background: var(--hover-color);
+        }
+        .habit-item.drag-over {
+            box-shadow: 0 4px 0 -2px var(--accent-color) inset; /* 드롭 존 시각적 표시 */
         }
 
         /* 체크 표시 디자인 */
         .checkbox {
             width: 16px;
             height: 16px;
-            border: 2px solid var(--very-light-color);
+            border: 2px solid var(--accent-color); 
             border-radius: 50%;
             cursor: pointer;
             flex-shrink: 0;
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: all 0.3s;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             background-color: white; 
             margin-right: 8px; 
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
         }
-        .checkbox.checked {
-            background: linear-gradient(135deg, var(--light-accent-color) 0%, var(--accent-color) 100%);
-            border-color: var(--accent-color);
-        }
+        .checkbox:hover { transform: scale(1.1); box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); }
+        .checkbox.checked { background: var(--accent-color); border-color: var(--accent-color); transform: scale(1.05); }
         .checkbox.checked::after {
-            content: '✓';
-            color: white; 
-            font-size: 10px; 
-            font-weight: bold;
+            content: ''; width: 3px; height: 7px; border: solid white;
+            border-width: 0 2px 2px 0; transform: rotate(45deg) translate(-1px, 0px); 
+            display: block; margin-top: -1px;
         }
+        
+        .habit-editable-area { display: flex; align-items: center; flex: 1; padding: 4px 0; cursor: pointer; min-width: 0; }
+        .habit-info { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
+        .habit-name-group { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
 
-        /* 편집 가능 영역 */
-        .habit-editable-area {
-            display: flex;
-            align-items: center;
-            flex: 1;
-            padding: 4px 0; 
-            cursor: pointer; 
-            min-width: 0; 
+        .habit-name { 
+            font-size: 11px; color: var(--text-color); font-weight: 600;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap; letter-spacing: -0.01em; 
         }
-        
-        .habit-info {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex: 1;
-            min-width: 0;
-        }
-        
-        .habit-name-group {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-            flex: 1;
-            min-width: 0;
-        }
-
-        .habit-name {
-            font-size: 11px;
-            color: var(--text-color);
-            font-weight: 500;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-        
-        .habit-frequency {
-            font-size: 9px;
-            color: #999;
-        }
+        .habit-frequency { font-size: 9px; color: #999; }
 
         /* 삭제 버튼 */
-        .delete-btn {
-            background: transparent;
-            color: rgba(255, 0, 0, 0.4); 
-            border: none;
-            font-size: 12px;
-            cursor: pointer;
-            transition: color 0.2s, opacity 0.3s;
-            padding: 4px;
-            line-height: 1;
-            opacity: 0;
-            z-index: 1;
-            flex-shrink: 0;
-            margin-left: 5px; 
-        }
-        .habit-item:hover .delete-btn {
-            opacity: 1;
-        }
-        .delete-btn:hover {
-            color: var(--accent-color); 
-        }
+        .delete-btn { background: transparent; color: rgba(255, 0, 0, 0.4); border: none; font-size: 12px; cursor: pointer; transition: color 0.2s, opacity 0.3s; padding: 4px; line-height: 1; opacity: 0; z-index: 1; flex-shrink: 0; margin-left: 5px; }
+        .habit-item:hover .delete-btn { opacity: 1; }
+        .delete-btn:hover { color: var(--accent-color); }
         
         /* 진행률 섹션 디자인 */
-        .progress-section {
-            margin-top: 15px;
-            padding-top: 5px; 
-            border-top: 1px solid var(--very-light-color); 
-        }
-        .progress-bar-container {
-            height: 8px;
-            background-color: var(--hover-color);
-            border-radius: 4px;
-            overflow: hidden;
-            margin-bottom: 5px;
-        }
-        .progress-bar {
-            height: 100%;
-            width: 0%;
-            background: linear-gradient(90deg, var(--light-accent-color) 0%, var(--accent-color) 100%);
-            transition: width 0.5s ease-out;
-        }
-        .progress-text {
-            font-size: 10px;
-            color: var(--accent-color); 
-            text-align: center;
-            font-weight: 600; 
-        }
-
+        .progress-section { margin-top: 10px; padding-top: 0px; border-top: none; display: flex; flex-direction: column; align-items: center; padding-bottom: 5px; }
+        .progress-text { font-size: 10px; color: #999; font-weight: 500; margin-bottom: 4px; }
+        .progress-bar-container { height: 10px; background-color: transparent; border-radius: 5px; overflow: hidden; width: 100%; border: 1px solid var(--very-light-color); }
+        .progress-bar { height: 100%; width: 0%; background: var(--accent-color); transition: width 0.5s ease-out; border-radius: 5px; }
+        
         /* 설정 버튼 영역 */
-        .settings-btn-area {
-            text-align: right;
-            margin-top: 8px;
-            padding-top: 5px;
-            border-top: 1px solid var(--very-light-color); 
-            display: flex; 
-            justify-content: flex-end; 
-            gap: 2px; 
-        }
-        .action-btn {
-            background: transparent;
-            color: var(--light-accent-color);
-            padding: 0;
-            font-size: 18px;
-            border-radius: 50%;
-            width: 28px; 
-            height: 28px; 
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            border: none; 
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .action-btn:hover {
-            color: var(--accent-color);
-            background: var(--hover-color);
+        .settings-btn-area { text-align: right; margin-top: 8px; padding-top: 5px; border-top: 1px solid var(--very-light-color); display: flex; justify-content: flex-end; gap: 2px; }
+        .action-btn { background: transparent; color: var(--light-accent-color); padding: 0; font-size: 18px; border-radius: 50%; width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; border: none; cursor: pointer; transition: all 0.2s; }
+        .action-btn:hover { color: var(--accent-color); background: var(--hover-color); }
+        
+        /* 색상 선택 버튼 */
+        #colorIcon { width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 0 1px var(--very-light-color); pointer-events: none; }
+        .color-change-btn { padding: 8px; position: relative; }
+        .color-change-btn input[type="color"] { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            opacity: 0; cursor: pointer; z-index: 100;
         }
         
-        /* 색상 선택 버튼 - 원형 표시 및 색상 입력창 숨기기 */
-        #colorIcon {
-            width: 12px; 
-            height: 12px; 
-            border-radius: 50%;
-            border: 2px solid white; 
-            box-shadow: 0 0 0 1px var(--very-light-color); 
-            pointer-events: none; 
-        }
-        .color-change-btn {
-            padding: 8px; 
-            position: relative;
-        }
-        .color-change-btn input[type="color"] {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            opacity: 0; 
-            cursor: pointer;
-        }
-
-
-        /* 모달 공통 스타일 */
-        .modal {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 18px;
-            display: none;
-            flex-direction: column;
-            padding: 15px;
-            z-index: 10;
-        }
-        .modal.open {
-            display: flex;
-        }
-
-        /* 모달 헤더 */
-        .modal-header {
-            width: 100%;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-        .modal-title {
-            font-size: 14px;
-            color: var(--accent-color);
-            font-weight: 600;
-        }
-        
-        /* 캘린더 모달 헤더 */
-        #calendarModal .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 8px;
-        }
-        #calendarMonthYear {
-            font-size: 11px;
-            font-weight: 600; 
-            color: var(--accent-color);
-            flex-grow: 1; 
-            text-align: center;
-        }
-        #calendarModal .modal-header button {
-            background: transparent;
-            border: none;
-            color: var(--light-accent-color);
-            font-size: 14px;
-            cursor: pointer;
-            padding: 5px;
-            transition: color 0.2s;
-        }
-        #calendarModal .modal-header button:hover {
-            color: var(--accent-color);
-        }
-        #calendarModal .modal-header .close-btn {
-            font-size: 18px; 
-            color: var(--text-color);
-            margin-left: 10px; 
-        }
-        
-
-        .close-btn {
-            background: transparent;
-            border: none;
-            color: var(--text-color);
-            font-size: 18px;
-            cursor: pointer;
-            padding: 0;
-            line-height: 1;
-            width: 20px;
-            height: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-        }
-        
-        /* 습관 추가/편집 모달 내용 영역 */
-        #habitFormModal .modal-content {
-            flex-grow: 1;
-            overflow-y: auto; 
-            padding-bottom: 10px; 
-        }
-        
-        .modal-setting-group {
-            margin-bottom: 12px;
-            padding: 8px 10px; 
-            border: 1px solid var(--very-light-color); 
-            border-radius: 10px;
-        }
-        .modal-setting-group label {
-            font-size: 10px; 
-            font-weight: 600;
-            color: var(--text-color);
-            padding-left: 5px; 
-            display: block; 
-        }
-        #habitFormModal input[type="text"], 
-        #habitFormModal select,
-        #habitFormModal input[type="number"] {
-            width: 100%; 
-            padding: 6px; 
-            border: 1px solid var(--very-light-color); 
-            border-radius: 8px; 
-            font-size: 9px; 
-            outline: none; 
-            margin-top: 4px;
-        }
-        #habitFormModal input[type="number"] {
-            width: 40px;
-            text-align: center;
-        }
-        #habitFormModal .input-frequency {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            font-size: 10px;
-            margin-top: 8px;
-        }
-        
-        /* 요일 선택 버튼 그룹 */
-        .day-selection-group {
-            display: flex;
-            justify-content: space-between;
-            gap: 4px;
-            margin-top: 8px;
-        }
-
-        /* 요일 선택 버튼 디자인 */
-        .day-selection-group button {
-            flex: 1;
-            padding: 6px 4px;
-            background: white;
-            color: var(--text-color);
-            border: 1px solid var(--very-light-color);
-            border-radius: 8px;
-            font-size: 9px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        /* 요일 선택 버튼 - 선택된 상태 */
-        .day-selection-group button.selected {
-            background: var(--light-accent-color);
-            color: white;
-            border-color: var(--light-accent-color);
-        }
-        /* 토요일(6) 색상 강조 (선택되지 않았을 때) */
-        .day-selection-group button[data-day="6"]:not(.selected) {
-            color: #007bff; /* 파랑 계열 */
-        }
-        /* 일요일(0) 색상 강조 (선택되지 않았을 때) */
-        .day-selection-group button[data-day="0"]:not(.selected) {
-            color: #dc3545; /* 빨강 계열 */
-        }
-
-        /* 모달 저장 버튼 */
-        #saveHabitBtn {
-            width: 100%;
-            padding: 8px;
-            background: var(--light-accent-color);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 11px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: background 0.2s;
-            margin-top: 10px;
-            
-            position: sticky; 
-            bottom: 0px; 
-            z-index: 11;
-            box-shadow: 0 -4px 8px rgba(255, 255, 255, 0.9); 
-        }
-        #saveHabitBtn:hover {
-            background: var(--accent-color);
-        }
-
-        /* 달력 디자인 */
-        .history-calendar {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 2px;
-            width: 100%;
-            text-align: center;
-        }
-        .weekday-label {
-            font-size: 9px;
-            color: var(--accent-color);
-            padding: 4px 0;
-            font-weight: bold;
-        }
-        .day-cell {
-            height: 25px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 10px;
-            border-radius: 4px;
-            cursor: default;
-        }
-        .day-cell.current-month { 
-            background: #fff;
-            color: var(--text-color); 
-            border: 1px solid var(--very-light-color);
-        }
-        .day-cell[data-completion="full"] {
-            background: var(--accent-color);
-            color: white;
-            border: 1px solid var(--accent-color);
-        }
-        .day-cell[data-completion="partial"] {
-            background: var(--light-accent-color);
-            color: white;
-            border: 1px solid var(--light-accent-color);
-        }
-        .day-cell[data-completion="0"] {
-            background: var(--hover-color);
-            border: 1px solid var(--very-light-color);
-        }
-        .day-cell.current-today { 
-            border: 2px solid var(--accent-color); 
-            padding: 0;
-        }
-        
-        /* 습관 초기화 팝업창 디자인 */
-        .confirm-modal {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 200px;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-            padding: 15px;
-            z-index: 20;
-            text-align: center;
-            border: 1px solid var(--very-light-color);
-            display: none; 
-        }
-        .confirm-modal-message {
-            font-size: 11px;
-            color: var(--text-color);
-            margin-bottom: 12px;
-        }
-        .confirm-modal-buttons button {
-            background: var(--light-accent-color);
-            color: white;
-            border: none;
-            border-radius: 6px;
-            padding: 5px 10px;
-            font-size: 10px;
-            cursor: pointer;
-            margin: 0 4px;
-            transition: background 0.2s;
-        }
-        .confirm-modal-buttons .confirm-no {
-            background: #ccc;
-            color: #333;
-        }
+        /* 모달 스타일 (생략) */
+        .modal { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.95); border-radius: 18px; display: none; flex-direction: column; padding: 15px; z-index: 10; }
+        .modal.open { display: flex; }
+        .modal-header { width: 100%; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .modal-title { font-size: 14px; color: var(--accent-color); font-weight: 600; }
+        .close-btn { background: transparent; border: none; color: var(--text-color); font-size: 18px; cursor: pointer; padding: 0; line-height: 1; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        #habitFormModal .modal-content { flex-grow: 1; overflow-y: auto; padding-bottom: 10px; }
+        .modal-setting-group { margin-bottom: 12px; padding: 8px 10px; border: 1px solid var(--very-light-color); border-radius: 10px; }
+        .modal-setting-group label { font-size: 10px; font-weight: 600; color: var(--text-color); padding-left: 5px; display: block; }
+        #habitFormModal input[type="text"], #habitFormModal select, #habitFormModal input[type="number"] { width: 100%; padding: 6px; border: 1px solid var(--very-light-color); border-radius: 8px; font-size: 9px; outline: none; margin-top: 4px; }
+        #habitFormModal input[type="number"] { width: 40px; text-align: center; }
+        #habitFormModal .input-frequency { display: flex; align-items: center; gap: 5px; font-size: 10px; margin-top: 8px; }
+        .day-selection-group { display: flex; justify-content: space-between; gap: 4px; margin-top: 8px; }
+        .day-selection-group button { flex: 1; padding: 6px 4px; background: white; color: var(--text-color); border: 1px solid var(--very-light-color); border-radius: 8px; font-size: 9px; cursor: pointer; transition: all 0.2s; }
+        .day-selection-group button.selected { background: var(--accent-color); color: white; border-color: var(--accent-color); }
+        .day-selection-group button[data-day="6"]:not(.selected) { color: #007bff; }
+        .day-selection-group button[data-day="0"]:not(.selected) { color: #dc3545; }
+        #saveHabitBtn { width: 100%; padding: 8px; background: var(--accent-color); color: white; border: none; border-radius: 8px; font-size: 11px; font-weight: bold; cursor: pointer; transition: background 0.2s; margin-top: 10px; position: sticky; bottom: 0px; z-index: 11; box-shadow: 0 -4px 8px rgba(255, 255, 255, 0.9); }
+        #saveHabitBtn:hover { background: var(--light-accent-color); }
+        .confirm-modal { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 200px; background: white; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); padding: 15px; z-index: 20; text-align: center; border: 1px solid var(--very-light-color); display: none; }
+        .confirm-modal-message { font-size: 11px; color: var(--text-color); margin-bottom: 12px; }
+        .confirm-modal-buttons button { background: var(--accent-color); color: white; border: none; border-radius: 6px; padding: 5px 10px; font-size: 10px; cursor: pointer; margin: 0 4px; transition: background 0.2s; }
+        .confirm-modal-buttons .confirm-yes:hover { background: var(--light-accent-color); }
+        .confirm-modal-buttons .confirm-no { background: #ccc; color: #333; }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="today-header" id="todayDateHeader" onclick="openCalendarModal()"></div>
-        
+        <div class="today-header" id="todayDateHeader"></div>
         <div id="habitList"></div>
-        
         <div class="progress-section">
+             <div class="progress-text" id="progressText">0/0</div>
             <div class="progress-bar-container">
                 <div class="progress-bar" id="progressBar"></div>
             </div>
-            <div class="progress-text" id="progressText">0/0</div>
         </div>
-
         <div class="settings-btn-area">
             <button class="action-btn add-habit-btn" onclick="openAddHabitModal()" title="새 습관 추가">+</button>
             <button class="action-btn color-change-btn" id="colorChangeBtn" title="강조 색상 변경">
@@ -546,18 +209,6 @@
                 <input type="color" id="colorPicker" value="#e91e63">
             </button>
         </div>
-
-        <div id="calendarModal" class="modal">
-            <div class="modal-header">
-                <button onclick="changeCalendarMonth(-1)">&#9664;</button>
-                <span class="calendar-nav" id="calendarMonthYear"></span>
-                <button onclick="changeCalendarMonth(1)">&#9654;</button>
-                <button class="close-btn" onclick="closeCalendarModal()">✕</button>
-            </div>
-            <div class="modal-content" id="calendarContainer">
-                </div>
-        </div>
-        
         <div id="habitFormModal" class="modal"> 
             <div class="modal-header">
                 <span class="modal-title" id="habitFormTitle">새 습관 추가</span>
@@ -568,7 +219,6 @@
                     <label class="modal-setting-label">습관 이름</label>
                     <input type="text" id="habitNameInput" placeholder="습관 이름 입력"> 
                 </div>
-
                 <div class="modal-setting-group">
                     <label class="modal-setting-label">반복 주기 설정</label>
                     <select id="frequencySelect" onchange="toggleFrequencyOptions()"> 
@@ -576,7 +226,6 @@
                         <option value="weekly_days">주간 특정 요일 반복</option>
                         <option value="weekly_count">주간 총 횟수 반복</option>
                     </select>
-
                     <div id="daySelector" class="day-selection-group" style="display: none;">
                         <button data-day="1">월</button>
                         <button data-day="2">화</button>
@@ -586,18 +235,15 @@
                         <button data-day="6">토</button>
                         <button data-day="0">일</button>
                     </div>
-                    
                     <div id="countSelector" class="input-frequency" style="display: none;">
                         <label for="weeklyCountInput">주 몇 회:</label>
                         <input type="number" id="weeklyCountInput" min="1" max="7" value="3">
                         <label>회</label>
                     </div>
                 </div>
-
                 <button id="saveHabitBtn" onclick="saveHabit()">저장</button>
             </div>
         </div>
-
         <div id="confirmModal" class="confirm-modal">
             <div class="confirm-modal-message" id="confirmMessage"></div>
             <div class="confirm-modal-buttons">
@@ -606,228 +252,157 @@
             </div>
         </div>
     </div>
-
     <script>
-        // --- 데이터 구조 및 로컬 스토리지 관리 ---
-        const DEFAULT_HABITS = [
-            { id: 1, icon: '☕', name: '아침 커피 마시기', frequency: 'daily', days: [], count: 0 },
-            { id: 2, icon: '🏃', name: '주 3회 달리기', frequency: 'weekly_count', days: [], count: 3 },
-            { id: 3, icon: '📖', name: '수/금 독서', frequency: 'weekly_days', days: [3, 5], count: 0 }
-        ];
-        
-        let habits = JSON.parse(localStorage.getItem('habits')) || DEFAULT_HABITS;
+        const DEFAULT_HABITS = [];
+        let habits = JSON.parse(localStorage.getItem('habits'));
+        if (habits === null || habits === undefined) { 
+            habits = DEFAULT_HABITS; 
+            localStorage.setItem('habits', JSON.stringify(habits));
+        }
         let nextId = habits.length > 0 ? Math.max(...habits.map(h => h.id)) + 1 : 1;
         let history = JSON.parse(localStorage.getItem('habitHistory')) || {}; 
-        let currentDate = new Date(); 
         let currentHabitId = null;
-
         const TODAY_KEY = getTodayKey(); 
         const TODAY_DAY = new Date().getDay();
-
-        function getTodayKey() {
+        function getTodayKey() { 
             const now = new Date();
-            return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+            return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`; 
         }
-        
-        function getStartOfWeek(date) {
+        function getStartOfWeek(date) { 
             const d = new Date(date);
             const day = d.getDay(); 
             const diff = d.getDate() - day; 
-            d.setDate(diff);
-            d.setHours(0, 0, 0, 0);
+            d.setDate(diff); 
+            d.setHours(0, 0, 0, 0); 
             return d;
         }
-
-        function saveState() {
-            localStorage.setItem('habits', JSON.stringify(habits));
+        function saveState() { 
+            localStorage.setItem('habits', JSON.stringify(habits)); 
             localStorage.setItem('habitHistory', JSON.stringify(history));
         }
 
-        // --- 색상 동적 변경 로직 ---
         const hexToHsl = (H) => { 
             var r = 0, g = 0, b = 0;
             if (H.length == 4) {
-                r = parseInt(H[1]+H[1], 16);
-                g = parseInt(H[2]+H[2], 16);
-                b = parseInt(H[3]+H[3], 16);
+                r = parseInt(H[1]+H[1], 16); g = parseInt(H[2]+H[2], 16); b = parseInt(H[3]+H[3], 16);
             } else if (H.length == 7) {
-                r = parseInt(H[1]+H[2], 16);
-                g = parseInt(H[3]+H[4], 16);
-                b = parseInt(H[5]+H[6], 16);
+                r = parseInt(H[1]+H[2], 16); g = parseInt(H[3]+H[4], 16); b = parseInt(H[5]+H[6], 16);
             }
-            r /= 255;
-            g /= 255;
-            b /= 255;
+            r /= 255; g /= 255; b /= 255;
             var max = Math.max(r, g, b), min = Math.min(r, g, b);
             var h, s, l = (max + min) / 2;
-
-            if (max == min) {
-                h = s = 0;
-            } else {
-                var d = max - min;
+            if (max == min) { h = s = 0; } 
+            else { 
+                var d = max - min; 
                 s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-                switch (max) {
+                switch (max) { 
                     case r: h = (g - b) / d + (g < b ? 6 : 0); break;
                     case g: h = (b - r) / d + 2; break;
-                    case b: h = (r - g) / d + 4; break;
-                }
+                    case b: h = (r - g) / d + 4; break; 
+                } 
                 h /= 6;
-            }
-            // HSL 값 반환
-            return [h * 360, s * 100, l * 100];
+            } 
+            return [h * 360, s * 100, l * 100]; 
         };
         const hslToHex = (h, s, l) => { 
-            h /= 360;
-            s /= 100;
-            l /= 100;
-            var r, g, b;
-            if (s == 0) {
-                r = g = b = l;
-            } else {
+            h /= 360; s /= 100; l /= 100;
+            var r, g, b; 
+            if (s == 0) { r = g = b = l; } 
+            else { 
                 var hue2rgb = function hue2rgb(p, q, t) {
                     if (t < 0) t += 1;
                     if (t > 1) t -= 1;
                     if (t < 1/6) return p + (q - p) * 6 * t;
                     if (t < 1/2) return q;
                     if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
-                    return p;
+                    return p; 
                 };
                 var q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-                var p = 2 * l - q;
-                r = hue2rgb(p, q, h + 1/3);
-                g = hue2rgb(p, q, h);
-                b = hue2rgb(p, q, h - 1/3);
-            }
-            var toHex = function(c) {
+                var p = 2 * l - q; 
+                r = hue2rgb(p, q, h + 1/3); g = hue2rgb(p, q, h);
+                b = hue2rgb(p, q, h - 1/3); 
+            } 
+            var toHex = function(c) { 
                 var hex = Math.round(c * 255).toString(16);
-                return hex.length == 1 ? "0" + hex : hex;
-            };
-            return "#" + toHex(r) + toHex(g) + toHex(b);
+                return hex.length == 1 ? "0" + hex : hex; 
+            }; 
+            return "#" + toHex(r) + toHex(g) + toHex(b); 
         };
         
-        function updateColorIcon(color) {
-            const colorIcon = document.getElementById('colorIcon');
-            if (colorIcon) {
-                colorIcon.style.backgroundColor = color;
-            }
+        function updateColorIcon(color) { 
+            const colorIcon = document.getElementById('colorIcon'); 
+            if (colorIcon) colorIcon.style.backgroundColor = color;
         }
         
-        function changeAccentColor(newColor) {
+        function changeAccentColor(newColor) { 
             const [h, s, l] = hexToHsl(newColor);
-            
-            // lightAccent: 명도 +15 (최대 100)
-            const lightAccent = hslToHex(h, s, Math.min(100, l + 15)); 
-            
-            // veryLightColor: 채도 40%로 낮추고 명도 88
-            const veryLightColor = hslToHex(h, Math.min(100, s * 0.4), 88); 
-            
-            // hoverColor: 채도 10%로 대폭 낮추고 명도 96으로 높여 매우 연하게 조정
-            const hoverColor = hslToHex(h, Math.min(100, s * 0.1), 96); 
-            
-            document.documentElement.style.setProperty('--accent-color', newColor);
+            const lightAccent = hslToHex(h, s, Math.min(100, l + 20)); 
+            const veryLightColor = hslToHex(h, s, Math.min(100, l + 45));
+            const hoverColor = hslToHex(h, s, Math.min(100, l + 50)); 
+            const separatorColor = hslToHex(h, s, 95); 
+            document.documentElement.style.setProperty('--accent-color', newColor); 
             document.documentElement.style.setProperty('--light-accent-color', lightAccent);
             document.documentElement.style.setProperty('--very-light-color', veryLightColor); 
             document.documentElement.style.setProperty('--hover-color', hoverColor); 
-
-            localStorage.setItem('accentColor', newColor);
+            document.documentElement.style.setProperty('--separator-color', separatorColor); 
+            localStorage.setItem('accentColor', newColor); 
             updateColorIcon(newColor); 
             renderHabits();
         }
 
-        // --- 렌더링 및 습관 기능 ---
-
-        function sortHabits(habits) {
-            const todayChecks = history[TODAY_KEY] || {};
-
-            return habits.sort((a, b) => {
-                const getPriority = (habit) => {
-                    const freq = habit.frequency;
-                    const isDue = isHabitDueToday(habit);
-                    const isChecked = todayChecks[habit.id];
-
-                    let basePriority = 99; 
-
-                    if (freq === 'daily') {
-                        basePriority = 10; 
-                    } else if (freq === 'weekly_days' && isDue) {
-                        basePriority = 20; 
-                    } else if (freq === 'weekly_count') {
-                        basePriority = 30; 
-                    } else if (freq === 'weekly_days' && !isDue) {
-                        basePriority = 40;
-                    } 
-                    
-                    let checkPriority = isChecked ? 1 : 0; 
-
-                    return basePriority + checkPriority;
-                };
-
-                const aPriority = getPriority(a);
-                const bPriority = getPriority(b);
-                
-                return aPriority - bPriority;
-            });
-        }
-
-        function isHabitDueToday(habit) {
+        /* 3. **수정:** 자동 정렬(sortHabits) 기능 제거 */
+        /* function sortHabits(habits) { ... } */
+        
+        function isHabitDueToday(habit) { 
             if (habit.frequency === 'daily') return true;
-            if (habit.frequency === 'weekly_days') return habit.days && habit.days.includes(TODAY_DAY);
+            if (habit.frequency === 'weekly_days') return habit.days && habit.days.includes(TODAY_DAY); 
             if (habit.frequency === 'weekly_count') return true; 
             return false;
         }
-
-        function getWeeklyCountProgress(habitId, targetCount) {
+        function getWeeklyCountProgress(habitId, targetCount) { 
             const startOfWeek = getStartOfWeek(new Date());
-            let current = new Date(startOfWeek);
-            let checkedCount = 0;
+            let current = new Date(startOfWeek); 
+            let checkedCount = 0; 
             const today = new Date();
-            
-            while (current <= today) {
-                const dateKey = `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}-${String(current.getDate()).padStart(2, '0')}`;
-                if (history[dateKey] && history[dateKey][habitId]) {
-                    checkedCount++;
-                }
-                current.setDate(current.getDate() + 1);
-            }
-
-            return `[${checkedCount}/${targetCount}회 목표]`;
+            while (current <= today) { 
+                const dateKey = `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}-${String(current.getDate()).padStart(2, '0')}`; 
+                if (history[dateKey] && history[dateKey][habitId]) checkedCount++;
+                current.setDate(current.getDate() + 1); 
+            } 
+            return `[${checkedCount}/${targetCount}회 목표]`; 
         }
-
-        function getFrequencyText(habit) {
+        function getFrequencyText(habit) { 
             if (habit.frequency === 'daily') return '[매일]';
-            if (habit.frequency === 'weekly_days' && habit.days && habit.days.length > 0) {
+            if (habit.frequency === 'weekly_days' && habit.days && habit.days.length > 0) { 
                 const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
-                // 월요일부터 시작하는 순서로 정렬하여 표시
-                const sortedDays = habit.days.sort((a, b) => {
-                    // 1, 2, 3, 4, 5, 6, 0 순서로 정렬 (월-일)
+                const sortedDays = habit.days.sort((a, b) => { 
                     const normalizedA = a === 0 ? 7 : a; 
                     const normalizedB = b === 0 ? 7 : b; 
-                    return normalizedA - normalizedB;
+                    return normalizedA - normalizedB; 
                 }).map(d => dayNames[d]);
-                
-                return `[주 ${habit.days.length}회: ${sortedDays.join(', ')}]`;
-            }
-            if (habit.frequency === 'weekly_count') {
-                return getWeeklyCountProgress(habit.id, habit.count);
-            }
+                return `[주 ${habit.days.length}회: ${sortedDays.join(', ')}]`; 
+            } 
+            if (habit.frequency === 'weekly_count') return getWeeklyCountProgress(habit.id, habit.count); 
             return '[주기 미설정]';
         }
         
-        function renderHabits() {
-            const habitList = document.getElementById('habitList');
+        function renderHabits() { 
+            const habitList = document.getElementById('habitList'); 
             habitList.innerHTML = '';
             
-            const sortedHabits = sortHabits(habits); 
-            const todayChecks = history[TODAY_KEY] || {}; 
-
-            sortedHabits.forEach(habit => {
-                const isDue = isHabitDueToday(habit);
-                const isChecked = todayChecks[habit.id] || false;
-                
+            /* 3. **수정:** habits 배열에 저장된 순서 그대로 렌더링 */
+            const habitsToRender = habits; 
+            const todayChecks = history[TODAY_KEY] || {};
+            
+            habitsToRender.forEach(habit => { 
+                const isDue = isHabitDueToday(habit); 
+                const isChecked = todayChecks[habit.id] || false; 
                 const isNotDue = !isDue && habit.frequency !== 'weekly_count'; 
-
-                const habitItem = document.createElement('div');
-                habitItem.className = `habit-item ${isNotDue ? 'not-due' : ''}`;
+                
+                const habitItem = document.createElement('div'); 
+                habitItem.className = `habit-item ${isNotDue ? 'not-due' : ''}`; 
+                habitItem.setAttribute('draggable', 'true'); /* 3. 드래그 가능 속성 추가 */
+                habitItem.setAttribute('data-id', habit.id); /* 3. 드래그 식별자 추가 */
                 
                 habitItem.innerHTML = `
                     <div style="display: flex; align-items: center;">
@@ -837,7 +412,7 @@
                     </div>
                     <div class="habit-editable-area" onclick="openEditHabitModal(${habit.id})">
                         <div class="habit-info">
-                            <span class="habit-icon">${habit.icon || ''}</span> 
+                            <span class="habit-icon">${habit.icon || ''}</span>
                             <div class="habit-name-group">
                                 <span class="habit-name">${habit.name}</span>
                                 <span class="habit-frequency">${getFrequencyText(habit)}</span>
@@ -845,328 +420,247 @@
                         </div>
                     </div>
                     <button class="delete-btn" onclick="event.stopPropagation(); confirmDelete(${habit.id})" title="삭제">x</button>
-                `;
-                habitList.appendChild(habitItem);
+                `; 
+                
+                /* 3. 드래그 앤 드롭 이벤트 리스너 추가 */
+                habitItem.addEventListener('dragstart', handleDragStart);
+                habitItem.addEventListener('dragover', handleDragOver);
+                habitItem.addEventListener('drop', handleDrop);
+                habitItem.addEventListener('dragenter', handleDragEnter);
+                habitItem.addEventListener('dragleave', handleDragLeave);
+                habitList.appendChild(habitItem); 
             });
-
-            updateProgress();
-            saveState();
+            
+            updateProgress(); 
+            saveState(); 
         }
 
-        function toggleHabit(id) {
+        /* 3. **추가:** 드래그 앤 드롭 핸들러 */
+        let draggedHabitId = null;
+
+        function handleDragStart(e) {
+            draggedHabitId = parseInt(e.currentTarget.getAttribute('data-id'));
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', draggedHabitId);
+            setTimeout(() => e.currentTarget.classList.add('dragging'), 0);
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            const target = e.currentTarget;
+            if (target.classList.contains('habit-item') && parseInt(target.getAttribute('data-id')) !== draggedHabitId) {
+                // 기존의 drag-over 클래스를 제거하고 현재 대상에 추가
+                document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+                target.classList.add('drag-over');
+            }
+        }
+
+        function handleDragEnter(e) {
+            e.preventDefault();
+        }
+
+        function handleDragLeave(e) {
+            e.currentTarget.classList.remove('drag-over');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            const target = e.currentTarget;
+            const targetId = parseInt(target.getAttribute('data-id'));
+            
+            // 모든 드래그 관련 클래스 제거
+            document.querySelectorAll('.dragging, .drag-over').forEach(el => el.classList.remove('dragging', 'drag-over'));
+            
+            if (draggedHabitId === targetId) return;
+
+            const sourceIndex = habits.findIndex(h => h.id === draggedHabitId);
+            const targetIndex = habits.findIndex(h => h.id === targetId);
+
+            if (sourceIndex > -1 && targetIndex > -1) {
+                // 배열에서 습관을 이동
+                const [movedHabit] = habits.splice(sourceIndex, 1);
+                habits.splice(targetIndex, 0, movedHabit);
+                
+                // 새로운 순서로 리렌더링
+                renderHabits();
+            }
+            draggedHabitId = null;
+        }
+
+        function toggleHabit(id) { 
             const habit = habits.find(h => h.id === id);
-            if (!habit) return;
-            
+            if (!habit) return; 
             if (habit.frequency === 'weekly_days' && !isHabitDueToday(habit)) return; 
-
-            const isChecked = !(history[TODAY_KEY] && history[TODAY_KEY][id]);
-            
-            history[TODAY_KEY] = history[TODAY_KEY] || {};
-            history[TODAY_KEY][id] = isChecked;
-            renderHabits();
+            const isChecked = !(history[TODAY_KEY] && history[TODAY_KEY][id]); 
+            history[TODAY_KEY] = history[TODAY_KEY] || {}; 
+            history[TODAY_KEY][id] = isChecked; 
+            renderHabits(); 
         }
-
-        function updateProgress() {
+        function updateProgress() { 
             const dailyDueHabits = habits.filter(h => h.frequency === 'daily' || (h.frequency === 'weekly_days' && isHabitDueToday(h)));
-
-            const totalDueItems = dailyDueHabits.length;
-            if (totalDueItems === 0) {
-                document.getElementById('progressText').textContent = '0/0';
-                document.getElementById('progressBar').style.width = '0%';
+            const totalDueItems = dailyDueHabits.length; 
+            if (totalDueItems === 0) { 
+                document.getElementById('progressText').textContent = '습관을 추가하여 오늘 목표를 설정해보세요.'; 
+                document.getElementById('progressBar').style.width = '0%'; 
                 return;
-            }
-
-            const todayChecks = history[TODAY_KEY] || {};
+            } 
+            const todayChecks = history[TODAY_KEY] || {}; 
             const checkedItems = dailyDueHabits.filter(h => todayChecks[h.id]).length; 
-            
-            let percentage = 0;
-            if (totalDueItems > 0) {
-                percentage = Math.round((checkedItems / totalDueItems) * 100);
-            }
-
-            setTimeout(() => {
-                document.getElementById('progressBar').style.width = percentage + '%';
+            let percentage = totalDueItems > 0 ? Math.round((checkedItems / totalDueItems) * 100) : 0; 
+            setTimeout(() => { 
+                document.getElementById('progressBar').style.width = percentage + '%'; 
             }, 0);
-            document.getElementById('progressText').textContent = `${checkedItems}/${totalDueItems}`;
+            document.getElementById('progressText').textContent = `오늘 달성률: ${percentage}% (${checkedItems}/${totalDueItems})`; 
         }
-
-        // --- 습관 추가/편집 모달 로직 ---
 
         let selectedDays = [];
-        function toggleFrequencyOptions() {
-            const frequency = document.querySelector('#habitFormModal #frequencySelect').value;
-            const daySelector = document.querySelector('#habitFormModal #daySelector');
+        function toggleFrequencyOptions() { 
+            const frequency = document.querySelector('#habitFormModal #frequencySelect').value; 
+            const daySelector = document.querySelector('#habitFormModal #daySelector'); 
             const countSelector = document.querySelector('#habitFormModal #countSelector');
-            
-            daySelector.style.display = 'none';
-            countSelector.style.display = 'none';
-
-            if (frequency === 'weekly_days') {
-                daySelector.style.display = 'flex';
-            } else if (frequency === 'weekly_count') {
-                countSelector.style.display = 'flex';
-            }
+            daySelector.style.display = 'none'; 
+            countSelector.style.display = 'none'; 
+            if (frequency === 'weekly_days') daySelector.style.display = 'flex';
+            else if (frequency === 'weekly_count') countSelector.style.display = 'flex'; 
         }
-        function setupDaySelector(initialDays = []) {
-            const daySelector = document.querySelector('#habitFormModal #daySelector');
-            if (!daySelector) return;
-            
+        function setupDaySelector(initialDays) { 
+            initialDays = initialDays || []; 
+            const daySelector = document.querySelector('#habitFormModal #daySelector'); 
+            if (!daySelector) return; 
             selectedDays = initialDays.slice();
-
-            daySelector.querySelectorAll('button').forEach(button => {
-                const day = parseInt(button.getAttribute('data-day'));
-                button.classList.remove('selected');
-                if (selectedDays.includes(day)) {
-                    button.classList.add('selected');
-                }
-                
-                button.onclick = function() {
-                    const index = selectedDays.indexOf(day);
-                    
-                    if (index > -1) {
-                        selectedDays.splice(index, 1);
-                        this.classList.remove('selected');
-                    } else {
-                        selectedDays.push(day);
-                        this.classList.add('selected');
-                    }
-                };
+            daySelector.querySelectorAll('button').forEach(button => { 
+                const day = parseInt(button.getAttribute('data-day')); 
+                button.classList.remove('selected'); 
+                if (selectedDays.includes(day)) button.classList.add('selected'); 
+                button.onclick = function() { 
+                    const index = selectedDays.indexOf(day); 
+                    if (index > -1) { 
+                        selectedDays.splice(index, 1); 
+                        this.classList.remove('selected'); 
+                    } else { 
+                        selectedDays.push(day); 
+                        this.classList.add('selected'); 
+                    } 
+                }; 
             });
         }
-        function openEditHabitModal(id) {
+        function openEditHabitModal(id) { 
             const habit = habits.find(h => h.id === id);
-            if (!habit) return;
-
-            currentHabitId = id;
-            document.getElementById('habitFormTitle').textContent = '습관 편집';
-            document.getElementById('habitNameInput').value = habit.name;
-            document.getElementById('frequencySelect').value = habit.frequency;
+            if (!habit) return; 
+            currentHabitId = id; 
+            document.getElementById('habitFormTitle').textContent = '습관 편집'; 
+            document.getElementById('habitNameInput').value = habit.name; 
+            document.getElementById('frequencySelect').value = habit.frequency; 
             document.getElementById('weeklyCountInput').value = habit.count || 1; 
-
             setupDaySelector(habit.days); 
-            toggleFrequencyOptions();
-
-            document.getElementById('habitFormModal').classList.add('open');
+            toggleFrequencyOptions(); 
+            document.getElementById('habitFormModal').classList.add('open'); 
         }
-        
-        function openAddHabitModal() {
+        function openAddHabitModal() { 
             currentHabitId = null;
-            document.getElementById('habitFormTitle').textContent = '새 습관 추가';
-            document.getElementById('habitNameInput').value = '';
-            document.getElementById('frequencySelect').value = 'daily';
+            document.getElementById('habitFormTitle').textContent = '새 습관 추가'; 
+            document.getElementById('habitNameInput').value = ''; 
+            document.getElementById('frequencySelect').value = 'daily'; 
             document.getElementById('weeklyCountInput').value = 3; 
-
-            setupDaySelector([]);
-            toggleFrequencyOptions();
-
+            setupDaySelector([]); 
+            toggleFrequencyOptions(); 
             document.getElementById('habitFormModal').classList.add('open');
         }
-        
         function closeHabitFormModal() { 
             document.getElementById('habitFormModal').classList.remove('open'); 
-            currentHabitId = null; 
+            currentHabitId = null;
         }
-
-        function saveHabit() {
-            const name = document.getElementById('habitNameInput').value.trim();
+        function saveHabit() { 
+            const name = document.getElementById('habitNameInput').value.trim(); 
             const frequency = document.getElementById('frequencySelect').value;
-            const weeklyCountInput = document.getElementById('weeklyCountInput');
-
-            if (!name) {
-                alert('습관 이름을 입력해주세요!');
-                return;
-            }
-
-            let days = [];
+            const weeklyCountInput = document.getElementById('weeklyCountInput'); 
+            if (!name) { 
+                alert('습관 이름을 입력해주세요!'); 
+                return; 
+            } 
+            let days = []; 
             let count = 0;
-
-            if (frequency === 'weekly_days') {
-                if (selectedDays.length === 0) {
+            if (frequency === 'weekly_days') { 
+                if (selectedDays.length === 0) { 
                     alert('주간 특정 요일 습관은 요일을 최소 1개 이상 선택해야 합니다.');
-                    return;
-                }
-                days = selectedDays.slice();
-            } else if (frequency === 'weekly_count') {
+                    return; 
+                } 
+                days = selectedDays.slice(); 
+            } else if (frequency === 'weekly_count') { 
                 count = parseInt(weeklyCountInput.value);
-                if (isNaN(count) || count < 1 || count > 7) {
-                    alert('주간 횟수는 1회부터 7회 사이로 설정해야 합니다.');
+                if (isNaN(count) || count < 1 || count > 7) { 
+                    alert('주간 횟수는 1회부터 7회 사이로 설정해야 합니다.'); 
                     return;
-                }
-            }
-
-            if (currentHabitId !== null) {
+                } 
+            } 
+            if (currentHabitId !== null) { 
                 const habitIndex = habits.findIndex(h => h.id === currentHabitId);
-                if (habitIndex > -1) {
-                    habits[habitIndex] = {
-                        ...habits[habitIndex],
-                        name: name,
-                        frequency: frequency,
-                        days: days,
-                        count: count
+                if (habitIndex > -1) { 
+                    habits[habitIndex] = { 
+                        ...habits[habitIndex], 
+                        name: name, 
+                        frequency: frequency, 
+                        days: days, 
+                        count: count 
                     };
-                }
-            } else {
-                const newHabit = {
-                    id: nextId++,
+                } 
+            } else { 
+                const newHabit = { 
+                    id: nextId++, 
                     icon: '', 
-                    name: name,
-                    frequency: frequency,
-                    days: days,
+                    name: name, 
+                    frequency: frequency, 
+                    days: days, 
                     count: count 
                 };
-                habits.push(newHabit);
-            }
-            
+                habits.push(newHabit); 
+            } 
             closeHabitFormModal(); 
-            renderHabits();
+            renderHabits(); 
         }
-
-        function confirmDelete(id) {
-            openConfirmModal('정말로 이 습관을 삭제하시겠습니까? 기록도 삭제됩니다.', () => {
-                habits = habits.filter(h => h.id !== id);
-                
-                for (const date in history) {
-                    if (history[date][id] !== undefined) {
-                        delete history[date][id];
-                    }
-                }
-
-                renderHabits();
+        function confirmDelete(id) { 
+            openConfirmModal('정말로 이 습관을 삭제하시겠습니까? 기록도 삭제됩니다.', () => { 
+                habits = habits.filter(h => h.id !== id); 
+                for (const date in history) { 
+                    if (history[date][id] !== undefined) { 
+                        delete history[date][id]; 
+                    } 
+                } 
+                renderHabits(); 
             });
         }
-        
-        // --- 모달 및 유틸리티 ---
-        function closeCalendarModal() { document.getElementById('calendarModal').classList.remove('open'); }
-        
         let pendingAction = null;
-        function openConfirmModal(message, actionCallback) {
-            document.getElementById('confirmMessage').textContent = message.replace(/<br>/g, ''); 
-            document.getElementById('confirmModal').style.display = 'block';
-            pendingAction = actionCallback;
-            document.getElementById('confirmYesBtn').onclick = () => {
-                pendingAction();
-                closeConfirmModal();
+        function openConfirmModal(message, actionCallback) { 
+            document.getElementById('confirmMessage').textContent = message.replace(/<br>/g, '');
+            document.getElementById('confirmModal').style.display = 'block'; 
+            pendingAction = actionCallback; 
+            document.getElementById('confirmYesBtn').onclick = () => { 
+                pendingAction(); 
+                closeConfirmModal(); 
             };
         }
-        function closeConfirmModal() {
-            document.getElementById('confirmModal').style.display = 'none';
+        function closeConfirmModal() { 
+            document.getElementById('confirmModal').style.display = 'none'; 
             pendingAction = null;
         }
-        function alert(message) { window.alert(message); }
+        function alert(message) { 
+            window.alert(message);
+        }
         
-        // --- 달력 렌더링 함수 ---
-
-        function openCalendarModal() {
-            document.getElementById('calendarModal').classList.add('open');
-            currentDate = new Date();
-            renderCalendar(currentDate);
-        }
-
-        function getCompletionRate(dateKey) {
-            const record = history[dateKey];
-            if (!record) return 0;
-            
-            const trackableHabits = habits.filter(h => h.frequency === 'daily' || h.frequency === 'weekly_days');
-            const totalHabits = trackableHabits.length; 
-            
-            if (totalHabits === 0) return 0;
-            
-            const checkedCount = trackableHabits.filter(h => record[h.id] === true).length;
-            
-            const recordedHabits = trackableHabits.filter(h => record[h.id] !== undefined);
-            const totalRecorded = recordedHabits.length;
-
-            if (totalRecorded === 0) return 0;
-
-            return checkedCount / totalRecorded;
-        }
-
-        function renderCalendar(date) {
-            const year = date.getFullYear();
-            const month = date.getMonth(); 
-            const today = new Date();
-            const todayKey = getTodayKey();
-
-            document.getElementById('calendarMonthYear').textContent = `${year}년 ${month + 1}월`;
-
-            const firstDayOfMonth = new Date(year, month, 1).getDay();
-            const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-            let calendarHTML = `
-                <div class="history-calendar">
-                    <div class="weekday-label">일</div>
-                    <div class="weekday-label">월</div>
-                    <div class="weekday-label">화</div>
-                    <div class="weekday-label">수</div>
-                    <div class="weekday-label">목</div>
-                    <div class="weekday-label">금</div>
-                    <div class="weekday-label">토</div>
-            `;
-            
-            for (let i = 0; i < firstDayOfMonth; i++) {
-                calendarHTML += `<div class="day-cell"></div>`;
-            }
-
-            for (let day = 1; day <= daysInMonth; day++) {
-                const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                const completionRate = getCompletionRate(dateKey); 
-
-                let completionClass = '';
-                let titleText = `${day}일`;
-
-                if (completionRate === 1) {
-                    completionClass = 'full';
-                    titleText += `: 100% 달성`;
-                } else if (completionRate > 0) {
-                    completionClass = 'partial';
-                    titleText += `: ${(completionRate * 100).toFixed(0)}% 달성`;
-                } else if (Object.keys(history[dateKey] || {}).length > 0) {
-                    completionClass = '0'; 
-                    titleText += `: 0% 달성`;
-                } else {
-                    titleText += `: 기록 없음`;
-                }
-
-                let extraClass = '';
-                if (dateKey === todayKey && year === today.getFullYear() && month === today.getMonth()) {
-                    extraClass = 'current-today';
-                }
-
-                calendarHTML += `
-                    <div class="day-cell current-month ${extraClass}" data-completion="${completionClass}" title="${titleText}">
-                        ${day}
-                    </div>
-                `;
-            }
-
-            calendarHTML += `</div>`;
-            document.getElementById('calendarContainer').innerHTML = calendarHTML;
-        }
-
-        function changeCalendarMonth(offset) {
-            currentDate.setMonth(currentDate.getMonth() + offset);
-            renderCalendar(currentDate);
-        }
-
-        // --- 초기 로드 ---
-
-        window.onload = function() {
-            document.getElementById('todayDateHeader').textContent = `오늘: ${TODAY_KEY}`;
-            
+        window.onload = function() { 
+            document.getElementById('todayDateHeader').textContent = `오늘: ${TODAY_KEY}`; 
             const colorPicker = document.querySelector('#colorPicker');
-            const savedColor = localStorage.getItem('accentColor') || colorPicker.value;
-            colorPicker.value = savedColor;
-            
+            const savedColor = localStorage.getItem('accentColor') || colorPicker.value; 
+            colorPicker.value = savedColor; 
             changeAccentColor(savedColor); 
-
-            colorPicker.addEventListener('input', (e) => {
+            colorPicker.addEventListener('input', (e) => { 
                 changeAccentColor(e.target.value); 
             });
-            colorPicker.addEventListener('change', (e) => {
-                changeAccentColor(e.target.value);
-            });
-            
-            renderHabits();
+            colorPicker.addEventListener('change', (e) => { 
+                changeAccentColor(e.target.value); 
+            }); 
+            renderHabits(); 
         };
     </script>
 </body>
