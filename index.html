@@ -3,457 +3,709 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Notion Habit Tracker</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
-
+    <title>Minimal Habit Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        /* --- 1. CSS Variables & Themes --- */
-        :root {
-            --bg-color: #fff0f3;
-            --card-bg: #ffffff;
-            --text-main: #4a4a4a;
-            --text-sub: #888888;
-            --accent-color: #ff8fa3; /* Default Rose */
-            --accent-light: #ffe0e6;
-            --shadow: 0 4px 15px rgba(0,0,0,0.05);
-            --radius: 16px;
-            --font-family: 'Poppins', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-        }
-
-        /* Theme Classes */
-        body.theme-lavender { --bg-color: #f3f0ff; --accent-color: #b39ddb; --accent-light: #ede7f6; }
-        body.theme-mint { --bg-color: #e0f2f1; --accent-color: #80cbc4; --accent-light: #e0f2f1; }
-        body.theme-peach { --bg-color: #fff3e0; --accent-color: #ffcc80; --accent-light: #fff3e0; }
-
-        * { box-sizing: border-box; outline: none; -webkit-tap-highlight-color: transparent; }
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500&display=swap');
 
         body {
-            margin: 0;
-            padding: 10px;
-            font-family: var(--font-family);
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            height: 100vh;
-            overflow: hidden; /* 스크롤은 내부 컨테이너에서 처리 */
-            transition: background-color 0.3s ease;
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: transparent; /* 노션 임베드용 투명 배경 */
+            color: #4a5568;
+            overflow-x: hidden;
         }
 
-        /* --- 2. Layout --- */
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
+        /* 스크롤바 커스텀 - 미니멀 */
+        ::-webkit-scrollbar {
+            width: 4px;
         }
-
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px 5px;
-            margin-bottom: 10px;
-        }
-
-        h1 { margin: 0; font-size: 1.2rem; font-weight: 600; color: var(--text-main); }
-        .date-display { font-size: 0.8rem; color: var(--text-sub); margin-top: 2px; }
-
-        .header-icons i {
-            font-size: 1.5rem;
-            cursor: pointer;
-            margin-left: 12px;
-            color: var(--text-sub);
-            transition: color 0.2s;
-        }
-        .header-icons i:hover { color: var(--accent-color); }
-
-        /* --- 3. Habit List --- */
-        .habit-list {
-            flex: 1;
-            overflow-y: auto;
-            padding: 5px;
-            /* 스크롤바 숨기기 */
-            -ms-overflow-style: none; scrollbar-width: none;
-        }
-        .habit-list::-webkit-scrollbar { display: none; }
-
-        .habit-card {
-            background: var(--card-bg);
-            border-radius: var(--radius);
-            padding: 15px;
-            margin-bottom: 12px;
-            box-shadow: var(--shadow);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            transition: transform 0.2s ease, opacity 0.3s;
-        }
-        
-        .habit-card:hover { transform: translateY(-2px); }
-
-        .habit-info { display: flex; align-items: center; gap: 12px; flex: 1; }
-        .habit-icon { color: var(--accent-color); font-size: 1.4rem; }
-        
-        .habit-text { display: flex; flex-direction: column; }
-        .habit-name { font-size: 0.95rem; font-weight: 500; }
-        .habit-meta { font-size: 0.75rem; color: var(--text-sub); }
-
-        /* Checkbox & Actions */
-        .check-btn {
-            width: 28px;
-            height: 28px;
-            border: 2px solid var(--accent-color);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
+        ::-webkit-scrollbar-track {
             background: transparent;
-            color: white;
-            transition: all 0.2s;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e0;
+            border-radius: 2px;
         }
 
-        .habit-card.completed .check-btn {
-            background: var(--accent-color);
-        }
-        
-        .habit-card.completed .habit-name {
-            text-decoration: line-through;
-            color: var(--text-sub);
+        /* 드래그 앤 드롭 스타일 */
+        .dragging {
+            opacity: 0.5;
+            border: 1px dashed #cbd5e0;
         }
 
-        .delete-btn {
-            font-size: 1.2rem;
-            color: #e0e0e0;
-            cursor: pointer;
-            margin-left: 10px;
-            opacity: 0; /* 호버 시 보임 */
-            transition: opacity 0.2s;
+        /* 체크박스 커스텀 애니메이션 최소화 */
+        .check-transition {
+            transition: all 0.2s ease-out;
         }
-        .habit-card:hover .delete-btn { opacity: 1; }
-        .delete-btn:hover { color: #ff6b6b; }
-
-        /* Counter Controls (for N times a week) */
-        .counter-controls { display: flex; align-items: center; gap: 8px; }
-        .count-btn {
-            width: 24px; height: 24px; background: var(--accent-light);
-            color: var(--accent-color); border-radius: 50%; border: none;
-            cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center;
-        }
-
-        /* --- 4. Popups (Modals) --- */
-        .modal-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(255,255,255, 0.6);
-            backdrop-filter: blur(4px);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 100;
-        }
-        .modal-overlay.active { display: flex; }
-
-        .modal-content {
-            background: white;
-            padding: 25px;
-            border-radius: 20px;
-            width: 90%;
-            max-width: 350px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-            animation: slideUp 0.3s ease;
-        }
-
-        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-
-        h2 { font-size: 1.1rem; margin-top: 0; color: var(--accent-color); }
-        
-        label { display: block; font-size: 0.8rem; color: var(--text-sub); margin-bottom: 5px; margin-top: 15px; }
-        input[type="text"], select {
-            width: 100%; padding: 10px; border: 1px solid #eee; border-radius: 10px;
-            background: #f9f9f9; font-family: var(--font-family);
-        }
-
-        .days-selector { display: flex; gap: 5px; margin-top: 5px; }
-        .day-chk { display: none; }
-        .day-label {
-            width: 30px; height: 30px; border-radius: 50%; background: #eee;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 0.7rem; cursor: pointer; color: #aaa;
-            transition: all 0.2s;
-        }
-        .day-chk:checked + .day-label { background: var(--accent-color); color: white; }
-
-        .btn-group { margin-top: 25px; display: flex; gap: 10px; }
-        .btn { flex: 1; padding: 12px; border: none; border-radius: 10px; cursor: pointer; font-weight: 600; font-family: var(--font-family); }
-        .btn-primary { background: var(--accent-color); color: white; }
-        .btn-cancel { background: #f0f0f0; color: var(--text-sub); }
-
-        /* Theme Selector Circles */
-        .theme-options { display: flex; gap: 15px; margin-top: 10px; justify-content: center;}
-        .theme-circle { width: 35px; height: 35px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; }
-        .theme-circle.selected { border-color: var(--text-main); transform: scale(1.1); }
-
     </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontSize: {
+                        'xxs': '0.65rem',
+                    }
+                }
+            }
+        }
+    </script>
 </head>
-<body>
+<body class="flex justify-center items-start min-h-screen p-4">
 
-<div class="container">
-    <header>
-        <div>
-            <h1 id="greeting">Today's Habits</h1>
-            <div class="date-display" id="currentDate">Loading date...</div>
-        </div>
-        <div class="header-icons">
-            <i class="ph ph-paint-brush-broad" onclick="openThemeModal()"></i>
-            <i class="ph ph-plus-circle" onclick="openAddModal()"></i>
-        </div>
-    </header>
-
-    <ul class="habit-list" id="habitList">
-        </ul>
-</div>
-
-<div class="modal-overlay" id="addModal">
-    <div class="modal-content">
-        <h2>New Habit</h2>
-        <label>Habit Name</label>
-        <input type="text" id="habitNameInput" placeholder="e.g., Read 10 pages">
+    <!-- 메인 위젯 컨테이너 -->
+    <div id="widget-container" class="w-full max-w-[320px] bg-white rounded-md shadow-sm border border-gray-100 overflow-hidden relative">
         
-        <label>Frequency Type</label>
-        <select id="freqType" onchange="toggleFreqOptions()">
-            <option value="daily">Every Day</option>
-            <option value="specific">Specific Days</option>
-            <option value="weekly">N times a week</option>
-        </select>
+        <!-- 헤더 영역 -->
+        <header class="px-5 pt-5 pb-3 flex justify-between items-end">
+            <div>
+                <p id="current-date" class="text-xs text-gray-400 font-light mb-1 tracking-wide">2023.11.20</p>
+                <h1 class="text-lg font-medium text-gray-700 tracking-tight flex items-center gap-2">
+                    My Habits
+                    <span id="progress-percent" class="text-xs font-light text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded-sm">0%</span>
+                </h1>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="toggleThemeMenu()" class="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-sm hover:bg-gray-50">
+                    <i data-lucide="palette" class="w-4 h-4"></i>
+                </button>
+                <button onclick="openModal('add')" class="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-sm hover:bg-gray-50">
+                    <i data-lucide="plus" class="w-4 h-4"></i>
+                </button>
+            </div>
+        </header>
 
-        <div id="specificDaysOpt" style="display:none;">
-            <label>Select Days</label>
-            <div class="days-selector">
-                <label><input type="checkbox" class="day-chk" value="0"><span class="day-label">S</span></label>
-                <label><input type="checkbox" class="day-chk" value="1"><span class="day-label">M</span></label>
-                <label><input type="checkbox" class="day-chk" value="2"><span class="day-label">T</span></label>
-                <label><input type="checkbox" class="day-chk" value="3"><span class="day-label">W</span></label>
-                <label><input type="checkbox" class="day-chk" value="4"><span class="day-label">T</span></label>
-                <label><input type="checkbox" class="day-chk" value="5"><span class="day-label">F</span></label>
-                <label><input type="checkbox" class="day-chk" value="6"><span class="day-label">S</span></label>
+        <!-- 진행률 바 -->
+        <div class="w-full h-[2px] bg-gray-100 mb-2">
+            <div id="progress-bar" class="h-full transition-all duration-300 w-0"></div>
+        </div>
+
+        <!-- 해빗 리스트 영역 -->
+        <div id="habit-list" class="px-3 pb-2 space-y-1 min-h-[100px]">
+            <!-- JS로 리스트 렌더링 -->
+        </div>
+
+        <!-- 분석 및 히트맵 영역 (접기/펼치기 가능) -->
+        <div class="px-5 py-4 border-t border-gray-50 mt-2">
+            <div class="flex justify-between items-center mb-3 cursor-pointer" onclick="toggleStats()">
+                <h3 class="text-xs font-medium text-gray-500 flex items-center gap-1">
+                    <i data-lucide="bar-chart-2" class="w-3 h-3"></i> Insight
+                </h3>
+                <i data-lucide="chevron-down" id="stat-chevron" class="w-3 h-3 text-gray-300 transition-transform"></i>
+            </div>
+            
+            <div id="stats-content" class="hidden">
+                <!-- 1. 최적의 시간 분석 -->
+                <div class="mb-4 bg-gray-50 p-2.5 rounded-sm">
+                    <p class="text-xs text-gray-500 mb-1 flex items-center gap-1">
+                        <i data-lucide="clock" class="w-3 h-3"></i> Best Time
+                    </p>
+                    <p id="best-time-text" class="text-sm text-gray-700 font-light">데이터 부족</p>
+                </div>
+
+                <!-- 2. 미니멀 히트맵 (최근 2주) -->
+                <div class="flex justify-between items-end">
+                    <div id="heatmap-grid" class="grid grid-cols-7 gap-1 w-full">
+                        <!-- JS로 렌더링 -->
+                    </div>
+                </div>
             </div>
         </div>
 
-        <div id="weeklyCountOpt" style="display:none;">
-            <label>Times per Week</label>
-            <select id="targetCount">
-                <option value="1">1 time</option>
-                <option value="2">2 times</option>
-                <option value="3">3 times</option>
-                <option value="4">4 times</option>
-                <option value="5">5 times</option>
-            </select>
+        <!-- 팝업: 테마 선택 (absolute positioning) -->
+        <div id="theme-modal" class="hidden absolute top-12 right-4 bg-white border border-gray-100 shadow-lg rounded-md p-2 z-20 w-32">
+            <p class="text-xs text-gray-400 mb-2 px-1">Theme Color</p>
+            <div class="space-y-1">
+                <button onclick="setTheme('rose')" class="w-full text-left px-2 py-1.5 text-xs hover:bg-gray-50 text-gray-600 rounded-sm flex items-center gap-2">
+                    <div class="w-2 h-2 bg-[#FF9EAA] rounded-full"></div> Rose
+                </button>
+                <button onclick="setTheme('lavender')" class="w-full text-left px-2 py-1.5 text-xs hover:bg-gray-50 text-gray-600 rounded-sm flex items-center gap-2">
+                    <div class="w-2 h-2 bg-[#B39CD0] rounded-full"></div> Lavender
+                </button>
+                <button onclick="setTheme('mint')" class="w-full text-left px-2 py-1.5 text-xs hover:bg-gray-50 text-gray-600 rounded-sm flex items-center gap-2">
+                    <div class="w-2 h-2 bg-[#71C9CE] rounded-full"></div> Mint
+                </button>
+                <button onclick="setTheme('peach')" class="w-full text-left px-2 py-1.5 text-xs hover:bg-gray-50 text-gray-600 rounded-sm flex items-center gap-2">
+                    <div class="w-2 h-2 bg-[#FFB7B2] rounded-full"></div> Peach
+                </button>
+            </div>
         </div>
 
-        <div class="btn-group">
-            <button class="btn btn-cancel" onclick="closeModals()">Cancel</button>
-            <button class="btn btn-primary" onclick="addHabit()">Save</button>
-        </div>
-    </div>
-</div>
-
-<div class="modal-overlay" id="themeModal">
-    <div class="modal-content" style="text-align: center;">
-        <h2>Pick a Theme</h2>
-        <div class="theme-options">
-            <div class="theme-circle" style="background:#ff8fa3;" onclick="setTheme('rose', this)"></div>
-            <div class="theme-circle" style="background:#b39ddb;" onclick="setTheme('lavender', this)"></div>
-            <div class="theme-circle" style="background:#80cbc4;" onclick="setTheme('mint', this)"></div>
-            <div class="theme-circle" style="background:#ffcc80;" onclick="setTheme('peach', this)"></div>
-        </div>
-        <div class="btn-group">
-            <button class="btn btn-cancel" onclick="closeModals()">Close</button>
-        </div>
-    </div>
-</div>
-
-<script>
-    // --- Data Management ---
-    let habits = JSON.parse(localStorage.getItem('myHabits')) || [];
-    let currentTheme = localStorage.getItem('theme') || 'rose';
-
-    // --- Initialization ---
-    document.addEventListener('DOMContentLoaded', () => {
-        renderDate();
-        applyTheme(currentTheme);
-        renderHabits();
-    });
-
-    // --- Rendering ---
-    function renderDate() {
-        const options = { weekday: 'long', month: 'short', day: 'numeric' };
-        document.getElementById('currentDate').innerText = new Date().toLocaleDateString('en-US', options);
-    }
-
-    function renderHabits() {
-        const list = document.getElementById('habitList');
-        list.innerHTML = '';
-        
-        const today = new Date().getDay(); // 0-6
-        const todayStr = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-
-        habits.forEach((habit, index) => {
-            // Logic to determine if habit should show today
-            let shouldShow = false;
-            let metaText = "";
-
-            if (habit.type === 'daily') {
-                shouldShow = true;
-                metaText = "Every Day";
-            } else if (habit.type === 'specific') {
-                if (habit.days.includes(today.toString())) shouldShow = true;
-                metaText = "Specific Days";
-            } else if (habit.type === 'weekly') {
-                shouldShow = true;
-                metaText = `Goal: ${habit.target} / week`;
-            }
-
-            // Reset logic (Basic: reset daily based on lastChecked date)
-            if (habit.lastChecked !== todayStr && habit.type !== 'weekly') {
-                 habit.completed = false; 
-            }
-            // Note: Weekly reset logic is simplified here for a widget. 
-            // Ideally, you check Monday-Sunday. Here we just track a counter.
-
-            if (shouldShow) {
-                const li = document.createElement('li');
-                li.className = `habit-card ${habit.completed ? 'completed' : ''}`;
+        <!-- 팝업: 습관 추가/수정 -->
+        <div id="editor-modal" class="hidden absolute inset-0 bg-white/95 z-30 flex flex-col p-5">
+            <!-- 편집 화면 -->
+            <div id="edit-view" class="flex flex-col h-full w-full">
+                <h2 id="modal-title" class="text-sm font-medium text-gray-700 mb-4">습관 추가하기</h2>
                 
-                let actionHTML = '';
-                
-                if (habit.type === 'weekly') {
-                    actionHTML = `
-                        <div class="counter-controls">
-                            <span style="font-size:0.9rem; color:var(--accent-color); font-weight:600;">${habit.current || 0}/${habit.target}</span>
-                            <button class="count-btn" onclick="incrementHabit(${index})"><i class="ph ph-plus"></i></button>
-                        </div>
-                    `;
-                } else {
-                    actionHTML = `
-                        <div class="check-btn" onclick="toggleHabit(${index})">
-                            <i class="ph ph-check" style="${habit.completed ? '' : 'display:none'}"></i>
-                        </div>
-                    `;
-                }
+                <div class="space-y-4 flex-1">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">습관 이름</label>
+                        <input type="text" id="habit-name" class="w-full border-b border-gray-200 focus:border-gray-400 outline-none py-1 text-sm bg-transparent" placeholder="예: 물 마시기">
+                    </div>
 
-                li.innerHTML = `
-                    <div class="habit-info">
-                        <i class="ph ph-sparkle habit-icon"></i>
-                        <div class="habit-text">
-                            <span class="habit-name">${habit.name}</span>
-                            <span class="habit-meta">${metaText}</span>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-2">빈도 설정</label>
+                        <div class="flex gap-2 mb-2">
+                            <button type="button" onclick="setFreqType('daily')" id="btn-daily" class="freq-tab flex-1 py-1.5 text-xs border border-gray-200 rounded-sm text-gray-500 bg-white">매일</button>
+                            <button type="button" onclick="setFreqType('specific')" id="btn-specific" class="freq-tab flex-1 py-1.5 text-xs border border-gray-200 rounded-sm text-gray-500 bg-white">요일 지정</button>
+                            <button type="button" onclick="setFreqType('weekly')" id="btn-weekly" class="freq-tab flex-1 py-1.5 text-xs border border-gray-200 rounded-sm text-gray-500 bg-white">주 N회</button>
+                        </div>
+
+                        <!-- 요일 선택기 (요일 지정일 때만 보임) -->
+                        <div id="day-selector" class="hidden flex justify-between gap-1 mt-2">
+                            <button onclick="toggleDay(0)" class="day-btn w-7 h-7 rounded-sm text-xs border border-gray-200 text-gray-400" data-day="0">일</button>
+                            <button onclick="toggleDay(1)" class="day-btn w-7 h-7 rounded-sm text-xs border border-gray-200 text-gray-400" data-day="1">월</button>
+                            <button onclick="toggleDay(2)" class="day-btn w-7 h-7 rounded-sm text-xs border border-gray-200 text-gray-400" data-day="2">화</button>
+                            <button onclick="toggleDay(3)" class="day-btn w-7 h-7 rounded-sm text-xs border border-gray-200 text-gray-400" data-day="3">수</button>
+                            <button onclick="toggleDay(4)" class="day-btn w-7 h-7 rounded-sm text-xs border border-gray-200 text-gray-400" data-day="4">목</button>
+                            <button onclick="toggleDay(5)" class="day-btn w-7 h-7 rounded-sm text-xs border border-gray-200 text-gray-400" data-day="5">금</button>
+                            <button onclick="toggleDay(6)" class="day-btn w-7 h-7 rounded-sm text-xs border border-gray-200 text-gray-400" data-day="6">토</button>
+                        </div>
+
+                        <!-- 주 N회 선택기 (주 N회일 때만 보임) -->
+                        <div id="weekly-selector" class="hidden flex-col gap-2 mt-2">
+                            <p class="text-xs text-gray-400">일주일에 몇 번?</p>
+                            <div class="flex justify-between gap-1">
+                                <button onclick="setWeeklyFreq(1)" class="freq-count-btn w-6 h-6 rounded-sm text-xs border border-gray-200 text-gray-400" data-count="1">1</button>
+                                <button onclick="setWeeklyFreq(2)" class="freq-count-btn w-6 h-6 rounded-sm text-xs border border-gray-200 text-gray-400" data-count="2">2</button>
+                                <button onclick="setWeeklyFreq(3)" class="freq-count-btn w-6 h-6 rounded-sm text-xs border border-gray-200 text-gray-400" data-count="3">3</button>
+                                <button onclick="setWeeklyFreq(4)" class="freq-count-btn w-6 h-6 rounded-sm text-xs border border-gray-200 text-gray-400" data-count="4">4</button>
+                                <button onclick="setWeeklyFreq(5)" class="freq-count-btn w-6 h-6 rounded-sm text-xs border border-gray-200 text-gray-400" data-count="5">5</button>
+                                <button onclick="setWeeklyFreq(6)" class="freq-count-btn w-6 h-6 rounded-sm text-xs border border-gray-200 text-gray-400" data-count="6">6</button>
+                            </div>
                         </div>
                     </div>
-                    <div style="display:flex; align-items:center;">
-                        ${actionHTML}
-                        <i class="ph ph-trash delete-btn" onclick="deleteHabit(${index})"></i>
-                    </div>
-                `;
-                list.appendChild(li);
+                </div>
+
+                <!-- 경고 메시지 -->
+                <p id="error-msg" class="text-xs text-rose-400 mt-2 h-4"></p>
+
+                <div class="flex gap-2 mt-4">
+                    <button onclick="closeModal()" class="flex-1 py-2 text-xs text-gray-500 hover:bg-gray-50 rounded-sm transition-colors">취소</button>
+                    <button onclick="saveHabit()" id="save-btn" class="flex-1 py-2 text-xs text-white rounded-sm transition-colors shadow-sm">저장</button>
+                </div>
+                
+                <!-- 삭제 버튼 (수정 모드일 때만 표시) -->
+                <button id="delete-btn" onclick="showDeleteConfirm()" class="hidden mt-2 text-xs text-gray-300 underline self-center hover:text-rose-400">삭제하기</button>
+            </div>
+
+            <!-- 삭제 확인 화면 (처음엔 숨김) -->
+            <div id="delete-confirm-view" class="hidden flex flex-col h-full justify-center items-center text-center w-full">
+                <div class="w-10 h-10 bg-gray-50 rounded-full flex items-center justify-center mb-3">
+                    <i data-lucide="trash-2" class="w-5 h-5 text-gray-400"></i>
+                </div>
+                <h3 class="text-sm font-medium text-gray-700 mb-1">습관 삭제</h3>
+                <p class="text-xs text-gray-400 mb-6 px-4 break-keep leading-relaxed">이 습관과 관련된 모든 기록이 영구적으로 삭제됩니다.<br>정말 삭제하시겠습니까?</p>
+                
+                <div class="flex gap-2 w-full">
+                    <button onclick="cancelDelete()" class="flex-1 py-2 text-xs text-gray-500 bg-gray-50 hover:bg-gray-100 rounded-sm transition-colors">돌아가기</button>
+                    <button onclick="deleteHabit()" class="flex-1 py-2 text-xs text-white bg-rose-300 hover:bg-rose-400 rounded-sm transition-colors shadow-sm">네, 삭제할래요</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- 상태 관리 및 설정 ---
+        const CONFIG = {
+            themes: {
+                // light: 배경(히트맵 연함), medium: 히트맵 중간, btn: 메인 버튼/체크/진행바(파스텔톤)
+                rose: { 
+                    light: 'bg-[#FFF0F5]', 
+                    medium: 'bg-[#FFC6D0]', 
+                    btn: 'bg-[#FF9EAA]' 
+                },
+                lavender: { 
+                    light: 'bg-[#F7F5FF]', 
+                    medium: 'bg-[#DDD6F3]', 
+                    btn: 'bg-[#B39CD0]' 
+                },
+                mint: { 
+                    light: 'bg-[#F0FFFA]', 
+                    medium: 'bg-[#B2EBF2]', 
+                    btn: 'bg-[#71C9CE]' 
+                },
+                peach: { 
+                    light: 'bg-[#FFF8F0]', 
+                    medium: 'bg-[#FFE0B2]', 
+                    btn: 'bg-[#FFB7B2]' 
+                },
             }
-        });
-        saveData();
-    }
-
-    // --- Logic Functions ---
-    function toggleHabit(index) {
-        const todayStr = new Date().toISOString().split('T')[0];
-        habits[index].completed = !habits[index].completed;
-        habits[index].lastChecked = todayStr;
-        renderHabits();
-    }
-
-    function incrementHabit(index) {
-        if(!habits[index].current) habits[index].current = 0;
-        habits[index].current++;
-        
-        // Check completion
-        if(habits[index].current >= habits[index].target) {
-            habits[index].completed = true;
-        }
-        renderHabits();
-    }
-
-    function addHabit() {
-        const name = document.getElementById('habitNameInput').value;
-        const type = document.getElementById('freqType').value;
-        
-        if (!name) return alert('Please enter a habit name');
-
-        let newHabit = {
-            name: name,
-            type: type,
-            completed: false,
-            lastChecked: ''
         };
 
-        if (type === 'specific') {
-            const checkboxes = document.querySelectorAll('.day-chk:checked');
-            newHabit.days = Array.from(checkboxes).map(cb => cb.value);
-            if(newHabit.days.length === 0) return alert('Select at least one day');
-        } else if (type === 'weekly') {
-            newHabit.target = parseInt(document.getElementById('targetCount').value);
-            newHabit.current = 0;
+        let state = {
+            habits: [],
+            logs: {}, // { "habitId": [timestamp, timestamp...] }
+            theme: 'rose',
+            editingId: null,
+            tempDays: [], // 편집 중 임시 요일 저장
+            tempFreq: 3   // 편집 중 임시 주 N회 횟수 저장
+        };
+
+        // --- 초기화 ---
+        function init() {
+            loadData();
+            updateDateDisplay();
+            applyThemeStyle();
+            render();
+            
+            // 1분마다 날짜 갱신 체크
+            setInterval(updateDateDisplay, 60000);
         }
 
-        habits.push(newHabit);
-        closeModals();
-        document.getElementById('habitNameInput').value = ''; // reset
-        renderHabits();
-    }
+        function loadData() {
+            const saved = localStorage.getItem('notionHabitTracker');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                state = { ...state, ...parsed };
+            }
+        }
 
-    function deleteHabit(index) {
-        if(confirm('Delete this habit?')) {
-            habits.splice(index, 1);
+        function saveData() {
+            localStorage.setItem('notionHabitTracker', JSON.stringify(state));
+            render();
+        }
+
+        function updateDateDisplay() {
+            const now = new Date();
+            const options = { year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short' };
+            document.getElementById('current-date').innerText = now.toLocaleDateString('ko-KR', options);
+        }
+
+        // --- 테마 관리 ---
+        function toggleThemeMenu() {
+            const modal = document.getElementById('theme-modal');
+            modal.classList.toggle('hidden');
+        }
+
+        function setTheme(themeName) {
+            state.theme = themeName;
+            saveData();
+            applyThemeStyle();
+            document.getElementById('theme-modal').classList.add('hidden');
+        }
+
+        function applyThemeStyle() {
+            const theme = CONFIG.themes[state.theme];
+            
+            const saveBtn = document.getElementById('save-btn');
+            saveBtn.className = `flex-1 py-2 text-xs text-white rounded-sm transition-colors shadow-sm ${theme.btn}`;
+            
+            const progressBar = document.getElementById('progress-bar');
+            progressBar.className = `h-full transition-all duration-300 w-0 ${theme.btn}`;
+            
+            render(); 
+        }
+
+        // --- 렌더링 로직 ---
+        function render() {
             renderHabits();
+            renderProgress();
+            renderHeatmap();
+            renderInsights();
+            lucide.createIcons();
         }
-    }
 
-    function saveData() {
-        localStorage.setItem('myHabits', JSON.stringify(habits));
-    }
+        function getWeeklyCount(habitId) {
+            const logs = state.logs[habitId] || [];
+            const now = new Date();
+            // 주의 시작을 일요일로 가정
+            const startOfWeek = new Date(now);
+            startOfWeek.setDate(now.getDate() - now.getDay());
+            startOfWeek.setHours(0, 0, 0, 0);
 
-    // --- UI Interaction ---
-    function openAddModal() {
-        document.getElementById('addModal').classList.add('active');
-    }
-    function openThemeModal() {
-        document.getElementById('themeModal').classList.add('active');
-    }
-    function closeModals() {
-        document.querySelectorAll('.modal-overlay').forEach(el => el.classList.remove('active'));
-    }
+            return logs.filter(ts => new Date(ts) >= startOfWeek).length;
+        }
 
-    function toggleFreqOptions() {
-        const type = document.getElementById('freqType').value;
-        document.getElementById('specificDaysOpt').style.display = (type === 'specific') ? 'block' : 'none';
-        document.getElementById('weeklyCountOpt').style.display = (type === 'weekly') ? 'block' : 'none';
-    }
+        function renderHabits() {
+            const list = document.getElementById('habit-list');
+            list.innerHTML = '';
+            const today = new Date();
+            const todayStr = today.toDateString();
+            const currentDay = today.getDay(); // 0:일, 1:월...
+            
+            const theme = CONFIG.themes[state.theme];
 
-    // --- Theming ---
-    function setTheme(themeName, element) {
-        currentTheme = themeName;
-        localStorage.setItem('theme', themeName);
-        applyTheme(themeName);
+            if (state.habits.length === 0) {
+                list.innerHTML = `<div class="text-center py-8 text-xs text-gray-300 font-light">습관을 추가해보세요</div>`;
+                return;
+            }
+
+            state.habits.forEach((habit, index) => {
+                // 오늘 활성화 여부 체크
+                let isActiveDay = true;
+                if (habit.type === 'specific' && !habit.days.includes(currentDay)) {
+                    isActiveDay = false;
+                }
+
+                // 완료 여부 체크 (오늘 날짜 기준)
+                const habitLogs = state.logs[habit.id] || [];
+                const isDone = habitLogs.some(ts => new Date(ts).toDateString() === todayStr);
+
+                // 주간 횟수 계산 (주 N회 타입인 경우)
+                let weeklyText = '';
+                if (habit.type === 'weekly') {
+                    const count = getWeeklyCount(habit.id);
+                    weeklyText = `이번 주 ${count}/${habit.frequency}회`;
+                }
+
+                const div = document.createElement('div');
+                div.className = `group flex items-center gap-3 p-2 rounded-md bg-white hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-100 select-none`;
+                div.draggable = true;
+                
+                // 드래그 이벤트 연결
+                div.addEventListener('dragstart', (e) => {
+                    div.classList.add('dragging');
+                    e.dataTransfer.setData('text/plain', index);
+                });
+                div.addEventListener('dragend', () => div.classList.remove('dragging'));
+                div.addEventListener('dragover', (e) => e.preventDefault());
+                div.addEventListener('drop', (e) => handleDrop(e, index));
+
+                // UI 구성
+                const cursorClass = isActiveDay ? 'cursor-pointer' : 'cursor-not-allowed opacity-40';
+                const checkColor = isDone ? theme.btn : 'bg-gray-100 text-transparent';
+                const textColor = isDone ? 'text-gray-400 line-through decoration-gray-300' : 'text-gray-600';
+
+                div.innerHTML = `
+                    <div class="handle cursor-grab text-gray-200 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <i data-lucide="grip-vertical" class="w-3 h-3"></i>
+                    </div>
+                    <div class="flex-1 flex items-center gap-3 ${cursorClass}" onclick="${isActiveDay ? `toggleCheck('${habit.id}')` : ''}">
+                        <div class="w-5 h-5 rounded-sm flex items-center justify-center transition-all ${checkColor}">
+                            <i data-lucide="check" class="w-3 h-3 text-white"></i>
+                        </div>
+                        <div class="flex flex-col">
+                            <span class="text-xs font-normal ${textColor} transition-colors">${habit.name}</span>
+                        </div>
+                        <div class="ml-auto flex items-center">
+                             ${weeklyText ? `<span class="text-[9px] text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded-sm mr-1">${weeklyText}</span>` : ''}
+                             ${!isActiveDay ? `<span class="text-[10px] text-gray-300 border border-gray-100 px-1 rounded-sm">Off</span>` : ''}
+                        </div>
+                    </div>
+                    <button onclick="openModal('edit', '${habit.id}')" class="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-gray-500 transition-all">
+                        <i data-lucide="more-horizontal" class="w-3 h-3"></i>
+                    </button>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        function renderProgress() {
+            const today = new Date();
+            const todayStr = today.toDateString();
+            const currentDay = today.getDay();
+
+            // 오늘 해야 할 습관 개수
+            const activeHabits = state.habits.filter(h => h.type !== 'specific' || h.days.includes(currentDay));
+            if (activeHabits.length === 0) {
+                updateProgressBar(0);
+                return;
+            }
+
+            // 완료된 개수 (단순히 오늘 체크했는지만 따짐)
+            let doneCount = 0;
+            activeHabits.forEach(h => {
+                const logs = state.logs[h.id] || [];
+                if (logs.some(ts => new Date(ts).toDateString() === todayStr)) {
+                    doneCount++;
+                }
+            });
+
+            const percent = Math.round((doneCount / activeHabits.length) * 100);
+            updateProgressBar(percent);
+        }
+
+        function updateProgressBar(percent) {
+            document.getElementById('progress-bar').style.width = `${percent}%`;
+            document.getElementById('progress-percent').innerText = `${percent}%`;
+        }
+
+        // --- 히트맵 & 분석 ---
+        function toggleStats() {
+            const content = document.getElementById('stats-content');
+            const chevron = document.getElementById('stat-chevron');
+            content.classList.toggle('hidden');
+            
+            if (content.classList.contains('hidden')) {
+                chevron.style.transform = 'rotate(0deg)';
+            } else {
+                chevron.style.transform = 'rotate(180deg)';
+            }
+        }
+
+        function renderHeatmap() {
+            const grid = document.getElementById('heatmap-grid');
+            grid.innerHTML = '';
+            const theme = CONFIG.themes[state.theme];
+
+            // 지난 14일 생성
+            for (let i = 13; i >= 0; i--) {
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                const dStr = d.toDateString();
+                
+                let totalLogsOfDay = 0;
+                state.habits.forEach(h => {
+                    const logs = state.logs[h.id] || [];
+                    if (logs.some(ts => new Date(ts).toDateString() === dStr)) totalLogsOfDay++;
+                });
+
+                let bgClass = 'bg-gray-100';
+                if (totalLogsOfDay > 0) bgClass = theme.light;
+                if (totalLogsOfDay >= Math.max(1, state.habits.length / 2)) bgClass = theme.medium; // 중간색
+                if (totalLogsOfDay >= state.habits.length && state.habits.length > 0) bgClass = theme.btn; // 진한색(메인)
+
+                const cell = document.createElement('div');
+                cell.className = `w-full pt-[100%] relative rounded-sm ${bgClass}`;
+                cell.title = `${d.getMonth()+1}/${d.getDate()}`;
+                grid.appendChild(cell);
+            }
+        }
+
+        function renderInsights() {
+            let hourCounts = Array(24).fill(0);
+            let totalCount = 0;
+
+            Object.values(state.logs).forEach(timestamps => {
+                timestamps.forEach(ts => {
+                    const h = new Date(ts).getHours();
+                    hourCounts[h]++;
+                    totalCount++;
+                });
+            });
+
+            const textEl = document.getElementById('best-time-text');
+            if (totalCount < 5) {
+                textEl.innerText = "데이터 수집 중...";
+                return;
+            }
+
+            const maxVal = Math.max(...hourCounts);
+            const bestHour = hourCounts.indexOf(maxVal);
+            
+            let timeStr = "";
+            if (bestHour >= 5 && bestHour < 12) timeStr = "오전";
+            else if (bestHour >= 12 && bestHour < 18) timeStr = "오후";
+            else if (bestHour >= 18 && bestHour < 22) timeStr = "저녁";
+            else timeStr = "심야";
+
+            textEl.innerHTML = `<span class="font-medium text-gray-800">${timeStr} ${bestHour % 12 || 12}시</span>경에 가장 생산적이에요.`;
+        }
+
+        // --- 로직: 체크/드래그/편집 ---
+        function toggleCheck(habitId) {
+            const now = Date.now();
+            const todayStr = new Date().toDateString();
+            
+            if (!state.logs[habitId]) state.logs[habitId] = [];
+            
+            const logs = state.logs[habitId];
+            const todayLogIndex = logs.findIndex(ts => new Date(ts).toDateString() === todayStr);
+
+            if (todayLogIndex > -1) {
+                logs.splice(todayLogIndex, 1);
+            } else {
+                logs.push(now);
+            }
+            
+            saveData();
+        }
+
+        function handleDrop(e, targetIndex) {
+            e.preventDefault();
+            const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
+            if (fromIndex === targetIndex) return;
+
+            const item = state.habits.splice(fromIndex, 1)[0];
+            state.habits.splice(targetIndex, 0, item);
+            saveData();
+        }
+
+        // --- 모달 관련 ---
+        function openModal(mode, id = null) {
+            const modal = document.getElementById('editor-modal');
+            const editView = document.getElementById('edit-view');
+            const confirmView = document.getElementById('delete-confirm-view');
+            
+            // 뷰 초기화
+            editView.classList.remove('hidden');
+            confirmView.classList.add('hidden');
+            
+            const title = document.getElementById('modal-title');
+            const nameInput = document.getElementById('habit-name');
+            const delBtn = document.getElementById('delete-btn');
+            const theme = CONFIG.themes[state.theme];
+
+            modal.classList.remove('hidden');
+            document.getElementById('error-msg').innerText = '';
+
+            if (mode === 'add') {
+                state.editingId = null;
+                title.innerText = '새로운 습관 만들기';
+                nameInput.value = '';
+                state.tempFreq = 3; // 기본값
+                setFreqType('daily');
+                delBtn.classList.add('hidden');
+            } else {
+                state.editingId = id;
+                const habit = state.habits.find(h => h.id === id);
+                title.innerText = '습관 수정하기';
+                nameInput.value = habit.name;
+                
+                if (habit.type === 'specific') {
+                    state.tempDays = [...habit.days];
+                } else if (habit.type === 'weekly') {
+                    state.tempFreq = habit.frequency || 3;
+                }
+                
+                setFreqType(habit.type);
+                
+                if(habit.type === 'specific') updateDayButtons();
+                if(habit.type === 'weekly') updateFreqButtons();
+                
+                delBtn.classList.remove('hidden');
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('editor-modal').classList.add('hidden');
+            document.getElementById('theme-modal').classList.add('hidden');
+        }
+
+        function setFreqType(type) {
+            // 탭 UI 업데이트
+            document.querySelectorAll('.freq-tab').forEach(el => {
+                el.classList.remove('bg-gray-100', 'text-gray-800', 'border-gray-300');
+                el.classList.add('text-gray-500', 'bg-white');
+            });
+            
+            const typeIdMap = { 'daily': 'btn-daily', 'specific': 'btn-specific', 'weekly': 'btn-weekly' };
+            const activeBtn = document.getElementById(typeIdMap[type]);
+            activeBtn.classList.add('bg-gray-50', 'text-gray-800', 'border-gray-300');
+            activeBtn.classList.remove('bg-white');
+
+            // 내용 표시 토글
+            const daySelector = document.getElementById('day-selector');
+            const weeklySelector = document.getElementById('weekly-selector');
+            
+            daySelector.classList.add('hidden');
+            daySelector.classList.remove('flex');
+            weeklySelector.classList.add('hidden');
+            weeklySelector.classList.remove('flex');
+
+            if (type === 'specific') {
+                daySelector.classList.remove('hidden');
+                daySelector.classList.add('flex');
+                if (!state.editingId) state.tempDays = []; 
+                updateDayButtons();
+            } else if (type === 'weekly') {
+                weeklySelector.classList.remove('hidden');
+                weeklySelector.classList.add('flex');
+                updateFreqButtons();
+            }
+            
+            document.getElementById('editor-modal').dataset.freqType = type;
+        }
+
+        function toggleDay(dayIndex) {
+            const idx = state.tempDays.indexOf(dayIndex);
+            if (idx > -1) state.tempDays.splice(idx, 1);
+            else state.tempDays.push(dayIndex);
+            updateDayButtons();
+        }
+
+        function updateDayButtons() {
+            const theme = CONFIG.themes[state.theme];
+            document.querySelectorAll('.day-btn').forEach(btn => {
+                const d = parseInt(btn.dataset.day);
+                if (state.tempDays.includes(d)) {
+                    btn.className = `day-btn w-7 h-7 rounded-sm text-xs border border-transparent text-white ${theme.btn}`;
+                } else {
+                    btn.className = `day-btn w-7 h-7 rounded-sm text-xs border border-gray-200 text-gray-400 bg-white`;
+                }
+            });
+        }
         
-        // Visual feedback in modal
-        document.querySelectorAll('.theme-circle').forEach(el => el.classList.remove('selected'));
-        if(element) element.classList.add('selected');
-    }
-
-    function applyTheme(themeName) {
-        document.body.className = ''; // reset
-        if (themeName !== 'rose') {
-            document.body.classList.add(`theme-${themeName}`);
+        function setWeeklyFreq(count) {
+            state.tempFreq = count;
+            updateFreqButtons();
         }
-    }
-</script>
 
+        function updateFreqButtons() {
+            const theme = CONFIG.themes[state.theme];
+            document.querySelectorAll('.freq-count-btn').forEach(btn => {
+                const c = parseInt(btn.dataset.count);
+                if (state.tempFreq === c) {
+                    btn.className = `freq-count-btn w-6 h-6 rounded-sm text-xs border border-transparent text-white ${theme.btn}`;
+                } else {
+                    btn.className = `freq-count-btn w-6 h-6 rounded-sm text-xs border border-gray-200 text-gray-400 bg-white`;
+                }
+            });
+        }
+
+        function saveHabit() {
+            const name = document.getElementById('habit-name').value.trim();
+            const type = document.getElementById('editor-modal').dataset.freqType || 'daily';
+            
+            if (!name) {
+                document.getElementById('error-msg').innerText = '습관 이름을 입력해주세요.';
+                return;
+            }
+            if (type === 'specific' && state.tempDays.length === 0) {
+                document.getElementById('error-msg').innerText = '최소 하루 이상의 요일을 선택해주세요.';
+                return;
+            }
+
+            const habitData = {
+                name: name,
+                type: type,
+                days: type === 'specific' ? [...state.tempDays] : [],
+                frequency: type === 'weekly' ? state.tempFreq : null
+            };
+
+            if (state.editingId) {
+                // 수정
+                const habit = state.habits.find(h => h.id === state.editingId);
+                Object.assign(habit, habitData);
+            } else {
+                // 추가
+                const newHabit = {
+                    id: Date.now().toString(),
+                    created: Date.now(),
+                    ...habitData
+                };
+                state.habits.push(newHabit);
+            }
+
+            saveData();
+            closeModal();
+        }
+
+        // --- 삭제 관련 UI 제어 ---
+        function showDeleteConfirm() {
+            document.getElementById('edit-view').classList.add('hidden');
+            document.getElementById('delete-confirm-view').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function cancelDelete() {
+            document.getElementById('edit-view').classList.remove('hidden');
+            document.getElementById('delete-confirm-view').classList.add('hidden');
+        }
+
+        function deleteHabit() {
+            if (!state.editingId) return;
+            
+            state.habits = state.habits.filter(h => h.id !== state.editingId);
+            delete state.logs[state.editingId];
+            saveData();
+            closeModal();
+        }
+
+        // 시작
+        init();
+    </script>
 </body>
 </html>
